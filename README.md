@@ -1,0 +1,132 @@
+# qBittorrent pour QNAP
+
+Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorrent.org/) à un NAS QNAP, avec une interface web en français organisée comme un explorateur de fichiers. Pensé comme une alternative à Download Station : pas de Docker, pas de ligne de commande, tout se fait depuis l'App Center et le navigateur.
+
+![Explorateur de dossiers du NAS](docs/captures/explorateur.png)
+
+## Fonctionnalités
+
+- **Navigation dans les dossiers partagés du NAS** (arborescence, fil d'Ariane, liste ou icônes) pour choisir où télécharger.
+- **Ajout de torrents dans le dossier ouvert** :
+  - fichiers `.torrent` depuis le PC (bouton ou glisser-déposer) ;
+  - liens magnet ;
+  - fichiers `.torrent` déjà présents sur le NAS (cocher ou double-cliquer).
+- **Création de dossiers** à la volée : le dossier est créé au premier téléchargement.
+- **Suivi des téléchargements** : progression, vitesses, temps restant, filtres (en cours, terminés, arrêtés, en erreur), démarrer, arrêter, supprimer avec ou sans les fichiers.
+- **Première connexion simple** : identifiants initiaux connus, changement de mot de passe imposé.
+- L'**interface classique** de qBittorrent reste accessible (bouton « Interface classique »).
+
+![Liste des téléchargements](docs/captures/telechargements.png)
+
+## Compatibilité
+
+| | |
+|---|---|
+| Processeur | **x86_64** (Intel / AMD) uniquement |
+| Testé sur | TS-453D (Celeron J4125) |
+| QTS minimum | 4.5.0 |
+| qBittorrent | 5.3.0 (binaire statique [userdocs/qbittorrent-nox-static](https://github.com/userdocs/qbittorrent-nox-static)) |
+
+Les modèles ARM ne sont pas encore pris en charge. Les contributions sont bienvenues : il suffit en principe d'ajouter le binaire ARM correspondant au build.
+
+Pour connaître le processeur de votre NAS : Panneau de configuration › Système › Informations système.
+
+## Installation
+
+1. Téléchargez le fichier `qBittorrent_<version>_x86_64.qpkg` depuis la [dernière release](../../releases/latest).
+2. Dans l'**App Center**, ouvrez les paramètres (roue dentée), onglet *Général*, et cochez **« Autoriser l'installation d'applications sans signature numérique valide »**. Le paquet n'est pas signé par QNAP : seul QNAP (ou le Qnapclub Store) peut signer des paquets reconnus par l'App Center.
+3. Toujours dans l'App Center, cliquez sur **Installation manuelle** et choisissez le fichier `.qpkg`.
+4. Ouvrez **`http://IP-DE-VOTRE-NAS:8085`**.
+
+### Première connexion
+
+- Utilisateur : **`admin`**
+- Mot de passe : **`adminadmin`**
+
+Vous devrez immédiatement choisir votre propre mot de passe. Changez-le dès l'installation : `adminadmin` est connu de tous.
+
+![Choix du mot de passe à la première connexion](docs/captures/premiere-connexion.png)
+
+Vous pourrez ensuite le modifier à tout moment avec le bouton « Mot de passe ».
+
+## Bon à savoir
+
+| | |
+|---|---|
+| Interface web | port **8085** (le 8080 est utilisé par QTS) |
+| Port BitTorrent | **6881** : pour de bons débits, redirigez-le vers le NAS sur votre box |
+| Dossier de téléchargement par défaut | dossier partagé **Download** de QTS |
+| Journal | `/share/CACHEDEV1_DATA/.qpkg/qBittorrent/qbittorrent.log` (le volume peut varier) |
+| Réglages et torrents | dossier `profile/` du paquet, conservés lors des mises à jour |
+
+**Mise à jour** : installez simplement la nouvelle version par-dessus l'ancienne. Vos torrents et votre mot de passe sont conservés.
+
+**Retour à l'interface de qBittorrent d'origine** : bouton « Interface classique ». Pour revenir ensuite à l'explorateur : Outils › Options › Interface Web › cochez « Utiliser l'interface Web alternative ».
+
+## Dépannage
+
+**L'interface ne répond pas (`ERR_CONNECTION_REFUSED`)**
+Vérifiez que l'application est activée dans l'App Center, puis consultez le journal en SSH :
+```sh
+/etc/init.d/qBittorrent.sh start
+cat /share/CACHEDEV1_DATA/.qpkg/qBittorrent/qbittorrent.log
+```
+
+**qBittorrent ne démarre plus après une mise à jour du firmware**
+Une mise à jour de QTS peut désactiver l'option « Autoriser l'installation d'applications sans signature numérique valide ». Réactivez-la dans l'App Center.
+
+**Mot de passe perdu**
+En SSH, en root, supprimez la ligne du mot de passe puis redémarrez. Le mot de passe initial `adminadmin` sera de nouveau appliqué :
+```sh
+/etc/init.d/qBittorrent.sh stop
+sed -i '/^Password_PBKDF2=/d' /share/CACHEDEV1_DATA/.qpkg/qBittorrent/profile/qBittorrent/config/qBittorrent.conf
+/etc/init.d/qBittorrent.sh start
+```
+
+## Sécurité
+
+- N'exposez pas le port 8085 sur Internet. Pour un accès à distance, passez par un VPN (QVPN, WireGuard…).
+- Le changement de mot de passe à la première connexion est imposé par l'interface. Ce n'est pas une barrière de sécurité : changez-le vous-même dès l'installation.
+- Le service tourne en root, comme la plupart des paquets QPKG.
+- Le binaire qBittorrent est téléchargé depuis le projet userdocs et vérifié par son empreinte SHA-256 au moment du build.
+
+## Construire le paquet soi-même
+
+Sous Linux (Debian, Ubuntu…) :
+
+```sh
+sudo apt install git curl rsync gcc
+./build.sh
+```
+
+Le paquet est produit dans `build/`. Le script télécharge le binaire qBittorrent (version et empreinte SHA-256 épinglées en tête de `build.sh`) et l'outil [QDK](https://github.com/qnap-dev/QDK) de QNAP.
+
+À chaque tag `v<version>` (identique à `QPKG_VER` dans `src/qpkg.cfg`), GitHub Actions construit le paquet et le publie dans une release.
+
+### Organisation du dépôt
+
+```
+src/qpkg.cfg                    description du paquet (nom, version, ports)
+src/shared/qBittorrent.sh       script de démarrage et d'arrêt utilisé par QTS
+src/shared/webui/public/        page de connexion
+src/shared/webui/private/       interface « explorateur de fichiers »
+src/icons/                      icônes de l'App Center
+src/package_routines            gabarit QDK (non modifié)
+build.sh                        construction du .qpkg
+```
+
+## Crédits et licence
+
+- [qBittorrent](https://github.com/qbittorrent/qBittorrent) (GPL-2.0-or-later)
+- [qbittorrent-nox-static](https://github.com/userdocs/qbittorrent-nox-static) par userdocs, pour les binaires statiques
+- [QDK](https://github.com/qnap-dev/QDK), l'outil de création de paquets de QNAP (GPL-2.0-or-later)
+
+Ce projet est distribué sous licence **GPL-2.0-or-later** (voir [LICENSE](LICENSE)).
+
+Projet communautaire, sans lien avec QNAP Systems, Inc. ni avec le projet qBittorrent. QNAP, QTS et Download Station sont des marques de QNAP Systems, Inc.
+
+---
+
+### English summary
+
+A ready-to-install **QPKG** that adds qBittorrent 5.3 to x86_64 QNAP NAS models, with a French web UI laid out like a file browser: navigate your NAS shares and add `.torrent` files (from your PC or already on the NAS) or magnet links straight into the folder you are viewing. Install it from App Center (manual installation; enable unsigned apps first), then open `http://NAS-IP:8085` and log in with `admin` / `adminadmin`. You will be asked to choose your own password. Build it yourself with `./build.sh`.

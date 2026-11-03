@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>qBittorrent – Connexion</title>
+<style>
+  :root { --blue:#1866c2; --blue-dark:#0e4c97; --bg:#e9eef5; --text:#1f2a37; --muted:#6b7a8c; --border:#cfd8e3; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         font:14px/1.4 "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color:var(--text);
+         background:linear-gradient(160deg,#1d74d8 0%,#0e4c97 55%,#0a356b 100%); padding:16px; }
+  .card { width:100%; max-width:360px; background:#fff; border-radius:10px; box-shadow:0 18px 50px rgba(0,0,0,.28); overflow:hidden; }
+  .head { display:flex; align-items:center; gap:12px; padding:22px 26px 6px; }
+  .head svg { flex:none; }
+  .head h1 { margin:0; font-size:19px; font-weight:600; }
+  .head p { margin:2px 0 0; color:var(--muted); font-size:12.5px; }
+  form { padding:18px 26px 26px; display:grid; gap:14px; }
+  label { display:grid; gap:5px; font-size:12.5px; color:var(--muted); }
+  input { font:inherit; padding:9px 11px; border:1px solid var(--border); border-radius:6px; color:var(--text); }
+  input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(24,102,194,.18); }
+  button { font:inherit; font-weight:600; padding:10px; border:0; border-radius:6px; background:var(--blue); color:#fff; cursor:pointer; }
+  button:hover { background:var(--blue-dark); }
+  button:disabled { opacity:.6; cursor:wait; }
+  .first { font-size:12.5px; color:var(--muted); }
+  .first summary { cursor:pointer; color:var(--blue); width:max-content; }
+  .first[open] summary { margin-bottom:6px; }
+  .err { min-height:18px; margin:0; color:#c0392b; font-size:12.5px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#1866c2"/><path d="M17 9h6v11h5l-8 9-8-9h5z" fill="#fff"/><rect x="11" y="30" width="18" height="2.6" rx="1.3" fill="#fff"/></svg>
+      <div><h1>qBittorrent</h1><p>Téléchargements du NAS</p></div>
+    </div>
+    <form id="f">
+      <label>Nom d'utilisateur <input id="u" name="username" autocomplete="username" value="admin" required></label>
+      <label>Mot de passe <input id="p" name="password" type="password" autocomplete="current-password" required autofocus></label>
+      <p class="err" id="err" role="alert"></p>
+      <button id="b" type="submit">Se connecter</button>
+      <details class="first"><summary>Première connexion ?</summary>
+        Utilisateur <b>admin</b>, mot de passe <b>adminadmin</b>. Vous devrez ensuite choisir votre propre mot de passe.</details>
+    </form>
+  </div>
+<script>
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const b = document.getElementById('b'), err = document.getElementById('err');
+  b.disabled = true; err.textContent = '';
+  try {
+    const r = await fetch('api/v2/auth/login', {
+      method: 'POST',
+      body: new URLSearchParams({ username: document.getElementById('u').value, password: document.getElementById('p').value })
+    });
+    const t = await r.text();
+    // qBittorrent 5.x répond 204 (vide) en cas de succès, les versions 4.x « Ok. »
+    if (r.status === 403) err.textContent = "Trop d'échecs : adresse IP bloquée temporairement.";
+    else if (r.ok && t.trim() !== 'Fails.') {
+      // Mot de passe initial : l'interface obligera à le changer
+      try { localStorage.setItem('qbfs.mustChange', document.getElementById('p').value === 'adminadmin' ? 'true' : 'false'); } catch (_) {}
+      location.reload(); return;
+    }
+    else err.textContent = 'Identifiant ou mot de passe incorrect.';
+  } catch (_) { err.textContent = 'Le NAS ne répond pas.'; }
+  b.disabled = false;
+});
+</script>
+</body>
+</html>
