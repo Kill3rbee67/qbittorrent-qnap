@@ -186,7 +186,7 @@
   <div class="grow"></div>
   <div class="speeds"><span id="spd-dl">↓ —</span><span id="spd-up">↑ —</span></div>
   <button class="tbtn" id="passwd" title="Changer le mot de passe de l'interface">Mot de passe</button>
-  <button class="tbtn hide-sm" id="classic" title="Revenir à l'interface d'origine de qBittorrent">Interface classique</button>
+  <button class="tbtn hide-sm" id="classic" title="Ouvrir l'interface d'origine de qBittorrent">⇄ Interface classique</button>
   <button class="tbtn" id="logout">Déconnexion</button>
 </header>
 
@@ -985,11 +985,9 @@ const passwordDialog = (forced = false) => dialog({
   },
 });
 $('#passwd').onclick = () => passwordDialog(false);
-$('#classic').onclick = () => dialog({
-  title: 'Revenir à l\'interface classique', ok: 'Basculer',
-  body: `<span>L'interface d'origine de qBittorrent va s'afficher. Pour revenir à celle-ci : Outils › Options › Interface Web › cochez « Utiliser l'interface Web alternative ».</span>`,
-  onOk: async () => { await post('app/setPreferences', { json: JSON.stringify({ alternative_webui_enabled: false }) }); setTimeout(() => location.reload(), 500); },
-});
+// L'interface d'origine de qBittorrent est servie à côté de celle-ci (classic.html),
+// avec un bouton « Interface explorateur » pour revenir : rien à changer dans les options.
+$('#classic').onclick = () => { location.href = 'classic.html'; };
 
 /* ---------- Rafraîchissement ---------- */
 let polling = false;

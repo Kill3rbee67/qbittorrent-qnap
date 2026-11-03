@@ -2,6 +2,9 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.0.8
+- L'interface d'origine de qBittorrent est désormais **incluse à côté de l'explorateur**, en français. On passe de l'une à l'autre en un clic : « ⇄ Interface classique » d'un côté, « ⇄ Interface explorateur » de l'autre. Plus besoin de changer le réglage « Utiliser l'interface Web alternative ».
+
 ## 5.3.0.7
 - **Correction** : les torrents restaient « En attente de sources » quand Download Station était encore installé. Les deux utilisaient le port 6881 et qBittorrent ne pouvait alors contacter aucun tracker. Nouveau port par défaut **51881**, et si le port configuré est déjà pris au démarrage, un port libre est choisi automatiquement (indiqué dans le journal).
 - Panneau de détails : onglets **Trackers** (état et message d'erreur de chaque tracker, avec une aide au diagnostic) et **Pairs** (clients connectés).

@@ -14,7 +14,7 @@ Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorr
 - **Création de dossiers** à la volée : le dossier est créé au premier téléchargement.
 - **Suivi des téléchargements** : progression, vitesses, temps restant, filtres (en cours, terminés, arrêtés, en erreur), démarrer, arrêter, supprimer avec ou sans les fichiers.
 - **Première connexion simple** : identifiants initiaux connus, changement de mot de passe imposé.
-- L'**interface classique** de qBittorrent reste accessible (bouton « Interface classique »).
+- L'**interface d'origine** de qBittorrent (en français) est incluse : bouton « ⇄ Interface classique » pour y aller, bouton « ⇄ Interface explorateur » pour revenir. Les deux restent disponibles, sans rien changer dans les réglages.
 
 ![Liste des téléchargements](docs/captures/telechargements.png)
 
@@ -61,7 +61,7 @@ Vous pourrez ensuite le modifier à tout moment avec le bouton « Mot de passe �
 
 **Mise à jour** : installez simplement la nouvelle version par-dessus l'ancienne. Vos torrents et votre mot de passe sont conservés.
 
-**Retour à l'interface de qBittorrent d'origine** : bouton « Interface classique ». Pour revenir ensuite à l'explorateur : Outils › Options › Interface Web › cochez « Utiliser l'interface Web alternative ».
+**Interface d'origine de qBittorrent** : bouton « ⇄ Interface classique » (barre du haut), ou directement `http://IP-DU-NAS:8085/classic.html`. Pour revenir : bouton « ⇄ Interface explorateur » en haut à droite. Ne décochez pas « Utiliser l'interface Web alternative » dans les options : ce réglage fait fonctionner les deux interfaces.
 
 ## Dépannage
 
@@ -98,7 +98,7 @@ sed -i '/^Password_PBKDF2=/d' /share/CACHEDEV1_DATA/.qpkg/qBittorrent/profile/qB
 Sous Linux (Debian, Ubuntu…) :
 
 ```sh
-sudo apt install git curl rsync gcc
+sudo apt install git curl rsync gcc qt6-l10n-tools
 ./build.sh
 ```
 
@@ -112,7 +112,7 @@ Le paquet est produit dans `build/`. Le script télécharge le binaire qBittorre
 src/qpkg.cfg                    description du paquet (nom, version, ports)
 src/shared/qBittorrent.sh       script de démarrage et d'arrêt utilisé par QTS
 src/shared/webui/public/        page de connexion
-src/shared/webui/private/       interface « explorateur de fichiers »
+src/shared/webui/private/       interface « explorateur de fichiers » (l'interface d'origine y est ajoutée au build, sous classic.html)
 src/icons/                      icônes de l'App Center
 src/package_routines            gabarit QDK (non modifié)
 build.sh                        construction du .qpkg
@@ -123,6 +123,7 @@ build.sh                        construction du .qpkg
 - [qBittorrent](https://github.com/qbittorrent/qBittorrent) (GPL-2.0-or-later)
 - [qbittorrent-nox-static](https://github.com/userdocs/qbittorrent-nox-static) par userdocs, pour les binaires statiques
 - [QDK](https://github.com/qnap-dev/QDK), l'outil de création de paquets de QNAP (GPL-2.0-or-later)
+- L'interface web d'origine et ses traductions proviennent des sources de qBittorrent (même version que le binaire), récupérées au build.
 
 Ce projet est distribué sous licence **GPL-2.0-or-later** (voir [LICENSE](LICENSE)).
 

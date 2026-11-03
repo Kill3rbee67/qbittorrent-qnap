@@ -12,6 +12,9 @@ set -euo pipefail
 # Binaire statique : https://github.com/userdocs/qbittorrent-nox-static
 QBT_RELEASE="release-5.3.0_v2.1.2"
 QBT_SHA256_X86_64="563e695a2b830e62e627e1ae403bcfcc494e444d5cabb5ecc1e09907353d8ed5"
+# Interface web d'origine de qBittorrent (même version que le binaire), servie
+# à côté de l'interface explorateur sous classic.html
+QBT_WEBUI_TAG="release-5.3.0"
 # QPKG Development Kit : https://github.com/qnap-dev/QDK
 QDK_TAG="v2.5.3"
 # -----------------------------------------------------------------------------
@@ -45,6 +48,18 @@ if [ ! -x "$CACHE/bin/qpkg_encrypt" ]; then
     gcc -O2 -w -o "$CACHE/bin/qpkg_encrypt" "$CACHE/QDK/src/qpkg_encrypt.c"
 fi
 
+# 1b. Interface web classique de qBittorrent (seulement le dossier www des sources)
+WEBUI_SRC="$CACHE/qbt-webui-$QBT_WEBUI_TAG"
+if [ ! -d "$WEBUI_SRC/src/webui/www/public/images" ]; then
+    step "Récupération de l'interface classique de qBittorrent ($QBT_WEBUI_TAG)"
+    rm -rf "$WEBUI_SRC"
+    git clone -q --depth 1 --branch "$QBT_WEBUI_TAG" --filter=blob:none --sparse \
+        https://github.com/qbittorrent/qBittorrent "$WEBUI_SRC"
+    git -C "$WEBUI_SRC" sparse-checkout set --no-cone \
+        /src/webui/www/private/ /src/webui/www/public/images/ /src/webui/www/translations/
+fi
+LRELEASE="$(command -v lrelease || command -v lrelease-qt6 || ls /usr/lib/qt6/bin/lrelease 2>/dev/null || true)"
+
 # 2. Binaire qBittorrent-nox
 BIN="$CACHE/qbittorrent-nox-$QBT_RELEASE-x86_64"
 if [ ! -f "$BIN" ]; then
@@ -64,6 +79,23 @@ cp -r "$SRC" "$WORK/pkg"
 mkdir -p "$WORK/pkg/x86_64"
 cp "$BIN" "$WORK/pkg/x86_64/qbittorrent-nox"
 chmod 755 "$WORK/pkg/x86_64/qbittorrent-nox" "$WORK/pkg/shared/qBittorrent.sh"
+
+# Interface classique : copiée à côté de la nôtre (son index.html devient
+# classic.html), avec un bouton pour revenir à l'interface explorateur.
+UI="$WORK/pkg/shared/webui"
+rsync -a --exclude=/index.html "$WEBUI_SRC/src/webui/www/private/" "$UI/private/"
+rsync -a "$WEBUI_SRC/src/webui/www/public/images/" "$UI/public/images/"   # icônes d'onglet
+sed 's#</body>#<a id="qnapExplorerLink" href="./" title="Revenir à l'"'"'interface explorateur" style="position:fixed;top:3px;right:12px;z-index:100000;padding:3px 12px;border-radius:4px;background:\#1866c2;color:\#fff;font:600 13px/1.6 sans-serif;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,.3)">\&\#8644; Interface explorateur</a>\n</body>#' \
+    "$WEBUI_SRC/src/webui/www/private/index.html" > "$UI/private/classic.html"
+grep -q 'qnapExplorerLink' "$UI/private/classic.html" || die "bouton de retour non inséré dans classic.html"
+if [ -n "$LRELEASE" ]; then
+    mkdir -p "$UI/translations"
+    for ts in "$WEBUI_SRC"/src/webui/www/translations/webui_*.ts; do
+        "$LRELEASE" -silent "$ts" -qm "$UI/translations/$(basename "${ts%.ts}").qm"
+    done
+else
+    echo "Attention : lrelease introuvable (paquet qt6-l10n-tools), l'interface classique sera en anglais." >&2
+fi
 
 # 4. qbuild : son qdk.conf déduit l'emplacement de QDK du dossier courant,
 #    d'où ce dossier de travail contenant un lien « QDK ».
