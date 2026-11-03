@@ -59,7 +59,7 @@ Vous pourrez ensuite le modifier à tout moment avec le bouton « Mot de passe �
 | Journal | `/share/CACHEDEV1_DATA/.qpkg/qBittorrent/qbittorrent.log` (le volume peut varier) |
 | Réglages et torrents | dossier `profile/` du paquet, conservés lors des mises à jour |
 
-**Mise à jour** : installez simplement la nouvelle version par-dessus l'ancienne. Vos torrents et votre mot de passe sont conservés.
+**Mise à jour** : avec la source d'applications, cliquez sur **Mettre à jour** dans l'App Center. Sinon, installez la nouvelle version par-dessus l'ancienne. Dans les deux cas, vos torrents et votre mot de passe sont conservés.
 
 **Retour à l'interface de qBittorrent d'origine** : bouton « Interface classique ». Pour revenir ensuite à l'explorateur : Outils › Options › Interface Web › cochez « Utiliser l'interface Web alternative ».
 
@@ -101,7 +101,7 @@ sudo apt install git curl rsync gcc
 
 Le paquet est produit dans `build/`. Le script télécharge le binaire qBittorrent (version et empreinte SHA-256 épinglées en tête de `build.sh`) et l'outil [QDK](https://github.com/qnap-dev/QDK) de QNAP.
 
-**Publier une nouvelle version** : augmentez `QPKG_VER` dans `src/qpkg.cfg`, complétez `CHANGELOG.md` et poussez sur `main`. GitHub Actions construit le paquet, crée le tag `v<version>` et publie la release. Chaque pull request est aussi construite (paquet disponible dans les artefacts du workflow).
+**Publier une nouvelle version** : augmentez `QPKG_VER` dans `src/qpkg.cfg`, complétez `CHANGELOG.md` et poussez sur `main`. GitHub Actions construit le paquet, crée le tag `v<version>`, publie la release, puis met à jour `repository.xml` pour que l'App Center propose la mise à jour. Chaque pull request est aussi construite (paquet disponible dans les artefacts du workflow).
 
 ### Organisation du dépôt
 
@@ -113,6 +113,9 @@ src/shared/webui/private/       interface « explorateur de fichiers »
 src/icons/                      icônes de l'App Center
 src/package_routines            gabarit QDK (non modifié)
 build.sh                        construction du .qpkg
+tools/make-repository.sh        génération de repository.xml (source d'applications)
+repository.xml                  source d'applications de l'App Center (mise à jour par la CI)
+assets/                         icônes affichées dans l'App Center
 ```
 
 ## Crédits et licence
@@ -129,4 +132,4 @@ Projet communautaire, sans lien avec QNAP Systems, Inc. ni avec le projet qBitto
 
 ### English summary
 
-A ready-to-install **QPKG** that adds qBittorrent 5.3 to x86_64 QNAP NAS models, with a French web UI laid out like a file browser: navigate your NAS shares and add `.torrent` files (from your PC or already on the NAS) or magnet links straight into the folder you are viewing. Install it from App Center (manual installation; enable unsigned apps first), then open `http://NAS-IP:8085` and log in with `admin` / `adminadmin`. You will be asked to choose your own password. Build it yourself with `./build.sh`.
+A ready-to-install **QPKG** that adds qBittorrent 5.3 to x86_64 QNAP NAS models, with a French web UI laid out like a file browser: navigate your NAS shares and add `.torrent` files (from your PC or already on the NAS) or magnet links straight into the folder you are viewing. Enable unsigned apps in App Center, then either add the app repository `https://raw.githubusercontent.com/Kill3rbee67/qbittorrent-qnap/main/repository.xml` (one-click install and update notifications) or install the `.qpkg` from the releases manually, then open `http://NAS-IP:8085` and log in with `admin` / `adminadmin`. You will be asked to choose your own password. Build it yourself with `./build.sh`.

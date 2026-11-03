@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<plugins>
+  <cachechk>20261103215041</cachechk>
+  <item>
+    <name>qBittorrent</name>
+    <internalName>qBittorrent</internalName>
+    <category>Essentials</category>
+    <type>Download</type>
+    <icon100>https://raw.githubusercontent.com/Kill3rbee67/qbittorrent-qnap/main/assets/icon-100.png</icon100>
+    <icon80>https://raw.githubusercontent.com/Kill3rbee67/qbittorrent-qnap/main/assets/icon-80.png</icon80>
+    <description>Client BitTorrent qBittorrent avec une interface web en français organisée comme un explorateur de fichiers : naviguez dans les dossiers du NAS et ajoutez vos .torrent ou liens magnet directement dans le dossier de votre choix. Interface : http://IP-DU-NAS:8085 (admin / adminadmin à la première connexion, mot de passe à changer ensuite).</description>
+    <developer>qbittorrent-qnap (projet communautaire)</developer>
+    <developerLink>https://github.com/Kill3rbee67/qbittorrent-qnap</developerLink>
+    <fwVersion>4.5.0</fwVersion>
+    <version>5.3.0.6</version>
+    <platform>
+      <platformID>TS-NASX86</platformID>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.0.6/qBittorrent_5.3.0.6_x86_64.qpkg</location>
+    </platform>
+    <platform>
+      <platformID>TS-X73</platformID>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.0.6/qBittorrent_5.3.0.6_x86_64.qpkg</location>
+    </platform>
+    <platform>
+      <platformID>TVS-873</platformID>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.0.6/qBittorrent_5.3.0.6_x86_64.qpkg</location>
+    </platform>
+    <platform>
+      <platformID>TVS-873e</platformID>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.0.6/qBittorrent_5.3.0.6_x86_64.qpkg</location>
+    </platform>
+    <snapshot>https://raw.githubusercontent.com/Kill3rbee67/qbittorrent-qnap/main/docs/captures/explorateur.png</snapshot>
+    <tutorialLink>https://github.com/Kill3rbee67/qbittorrent-qnap#readme</tutorialLink>
+    <forumLink>https://github.com/Kill3rbee67/qbittorrent-qnap/issues</forumLink>
+  </item>
+</plugins>
