@@ -101,7 +101,7 @@ sudo apt install git curl rsync gcc
 
 Le paquet est produit dans `build/`. Le script télécharge le binaire qBittorrent (version et empreinte SHA-256 épinglées en tête de `build.sh`) et l'outil [QDK](https://github.com/qnap-dev/QDK) de QNAP.
 
-À chaque tag `v<version>` (identique à `QPKG_VER` dans `src/qpkg.cfg`), GitHub Actions construit le paquet et le publie dans une release.
+**Publier une nouvelle version** : augmentez `QPKG_VER` dans `src/qpkg.cfg`, complétez `CHANGELOG.md` et poussez sur `main`. GitHub Actions construit le paquet, crée le tag `v<version>` et publie la release. Chaque pull request est aussi construite (paquet disponible dans les artefacts du workflow).
 
 ### Organisation du dépôt
 
