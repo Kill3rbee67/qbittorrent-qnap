@@ -71,6 +71,20 @@
   .content { flex:1; overflow:auto; position:relative; }
   .content.drag::after { content:attr(data-drop); position:absolute; inset:10px; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px;
                          border:2px dashed var(--blue); border-radius:10px; background:rgba(227,238,251,.92); color:var(--blue-dark); font-weight:600; font-size:15px; pointer-events:none; }
+  /* --- Panneau de détails d'un torrent --- */
+  .details { flex:none; height:42%; min-height:200px; max-height:420px; display:flex; flex-direction:column; border-top:2px solid var(--border); background:#fff; }
+  .details[hidden] { display:none; }
+  .dtabs { display:flex; align-items:center; gap:2px; padding:0 8px 0 12px; border-bottom:1px solid var(--border); background:#f1f4f8; min-height:38px; }
+  .dtabs button.tab { border:0; background:none; padding:9px 12px; cursor:pointer; color:var(--muted); font-weight:600; border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
+  .dtabs button.tab.on { color:var(--blue-dark); border-bottom-color:var(--blue); }
+  .dtabs .dname { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; color:var(--muted); font-size:12px; padding:0 8px; }
+  .dbody { flex:1; overflow:auto; }
+  .kv { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:4px 28px; padding:14px 18px; }
+  .kv div { display:grid; grid-template-columns:150px 1fr; gap:10px; padding:3px 0; }
+  .kv dt { color:var(--muted); text-align:right; }
+  .kv dd { margin:0; font-variant-numeric:tabular-nums; word-break:break-word; }
+  tr.focus td { box-shadow:inset 0 1px 0 var(--blue), inset 0 -1px 0 var(--blue); }
+  tr.skip td { color:var(--grey); }
   .statusbar { display:flex; gap:16px; align-items:center; padding:5px 12px; border-top:1px solid var(--border); background:#fbfcfe; color:var(--muted); font-size:12px; min-height:28px; }
   .statusbar a { color:var(--blue); cursor:pointer; }
   .hint { margin:10px 12px 0; padding:9px 12px; border:1px solid var(--blue-line); background:var(--blue-soft); border-radius:6px; color:var(--blue-dark); font-size:12.5px; }
@@ -149,6 +163,13 @@
     body.side-open .side { transform:none; }
     .search { width:100%; order:10; }
     .btn .lbl-long { display:none; }
+    .top { gap:6px; padding:0 8px; }
+    .tbtn { padding:5px 7px; font-size:12.5px; }
+    .details { height:55%; max-height:none; }
+    .kv div { grid-template-columns:120px 1fr; }
+  }
+  @media (max-width: 440px) {
+    .brand-txt { display:none; }
   }
 </style>
 </head>
@@ -157,7 +178,7 @@
   <button class="burger" id="burger" aria-label="Menu"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
   <div class="brand">
     <svg width="26" height="26" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#fff"/><path d="M17 9h6v11h5l-8 9-8-9h5z" fill="#1866c2"/><rect x="11" y="30" width="18" height="2.6" rx="1.3" fill="#1866c2"/></svg>
-    qBittorrent
+    <span class="brand-txt">qBittorrent</span>
   </div>
   <div class="grow"></div>
   <div class="speeds"><span id="spd-dl">↓ —</span><span id="spd-up">↑ —</span></div>
@@ -177,6 +198,15 @@
     <div class="toolbar" id="toolbar"></div>
     <div class="pathbar" id="pathbar"></div>
     <div class="content" id="content"></div>
+    <section class="details" id="details" hidden aria-label="Détails du torrent">
+      <div class="dtabs">
+        <button class="tab" data-dtab="info">Informations</button>
+        <button class="tab" data-dtab="files">Fichiers</button>
+        <span class="dname" id="dname"></span>
+        <button class="ibtn" data-act="closedet" title="Fermer le panneau" aria-label="Fermer">✕</button>
+      </div>
+      <div class="dbody" id="dbody"></div>
+    </section>
     <div class="statusbar" id="statusbar"></div>
   </main>
 </div>
@@ -476,7 +506,7 @@ function renderTorrentRows() {
       const pcls = isError(t) ? 'err' : t.progress >= 1 ? 'done' : isStopped(t) ? 'stop' : '';
       const sel = state.sel.has(t.hash);
       const sp = normalize(t.save_path);
-      return `<tr class="${sel ? 'sel' : ''}" data-hash="${t.hash}">
+      return `<tr class="${sel ? 'sel' : ''}${t.hash === det.hash ? ' focus' : ''}" data-hash="${t.hash}">
         <td class="ck"><input type="checkbox" ${sel ? 'checked' : ''} aria-label="Sélectionner"></td>
         <td><div class="name" title="${esc(t.name)}">${I.torrent(18)}<span>${esc(t.name)}</span></div></td>
         <td class="num hide-sm">${fmtSize(t.size)}</td>
@@ -549,7 +579,98 @@ function renderStatus() {
 function renderAll() {
   renderFilters(); renderTree(); renderToolbar(); renderPathbar();
   if (state.view === 'torrents') renderTorrentsView(); else renderFolderView();
-  renderStatus();
+  renderStatus(); renderDetails();
+}
+
+/* ---------- Panneau de détails (comme Download Station) ---------- */
+const det = { hash: null, tab: store.get('dtab', 'info'), props: null, files: null, token: 0 };
+const fmtDate = (s) => (s > 0 ? new Date(s * 1000).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'medium' }) : '—');
+function fmtDur(s) {
+  if (!(s >= 0) || s >= 8640000) return '—';
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return [d && `${d} j`, (d || h) && `${h} h`, `${m} min`].filter(Boolean).join(' ');
+}
+function openDetails(hash) { det.hash = hash; det.props = det.files = null; renderDetails(); loadDetails(); }
+function closeDetails() { det.hash = null; renderDetails(); renderTorrentRows(); }
+async function loadDetails() {
+  if (!det.hash || state.view !== 'torrents') return;
+  const h = det.hash, tok = ++det.token;
+  try {
+    const [p, f] = await Promise.all([
+      api('torrents/properties?hash=' + h).then((r) => (r.ok ? r.json() : null)),
+      api('torrents/files?hash=' + h).then((r) => (r.ok ? r.json() : null)),
+    ]);
+    if (tok !== det.token || h !== det.hash) return;
+    det.props = p; det.files = f;
+    renderDetails();
+  } catch (_) {}
+}
+function renderDetails() {
+  const box = $('#details');
+  const t = det.hash && state.torrents.find((x) => x.hash === det.hash);
+  if (state.view !== 'torrents' || !det.hash || (state.torrents.length && !t)) { box.hidden = true; if (!t) det.hash = null; return; }
+  box.hidden = false;
+  box.querySelectorAll('[data-dtab]').forEach((b) => {
+    b.classList.toggle('on', b.dataset.dtab === det.tab);
+    if (b.dataset.dtab === 'files') b.textContent = 'Fichiers' + (det.files && det.files.length ? ` (${det.files.length})` : '');
+  });
+  $('#dname').textContent = t ? t.name : '';
+  const body = $('#dbody');
+  if (!det.props && !det.files) { body.innerHTML = `<div class="empty" style="padding:30px">Chargement…</div>`; return; }
+  body.innerHTML = det.tab === 'files' ? filesHTML(t) : infoHTML(t, det.props || {});
+}
+function infoHTML(t, p) {
+  const [label] = (t && ST[t.state]) || [t ? t.state : '—'];
+  const done = t && t.progress >= 1;
+  const rows = [
+    ['État', label],
+    ['Progression', t ? (Math.floor(t.progress * 1000) / 10).toLocaleString('fr-FR') + ' %' : '—'],
+    ['Heure de début', fmtDate(p.addition_date)],
+    ['Terminé le', fmtDate(p.completion_date)],
+    ['Durée écoulée', fmtDur(p.time_elapsed)],
+    ['Temps restant', done || (t && isStopped(t)) ? '—' : fmtEta(p.eta)],
+    ['Taille totale', p.total_size > 0 ? fmtSize(p.total_size) : '—'],
+    ['Téléchargé', fmtSize(p.total_downloaded || 0)],
+    ['Envoyé', fmtSize(p.total_uploaded || 0)],
+    ['Ratio de partage', p.share_ratio >= 0 ? p.share_ratio.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) : '—'],
+    ['Vitesse de réception', `${fmtSpeed(p.dl_speed)}${p.dl_speed_avg > 0 ? ` (moy. ${fmtSpeed(p.dl_speed_avg)})` : ''}`],
+    ['Vitesse d\'envoi', `${fmtSpeed(p.up_speed)}${p.up_speed_avg > 0 ? ` (moy. ${fmtSpeed(p.up_speed_avg)})` : ''}`],
+    ['Sources', p.seeds_total >= 0 ? `${p.seeds} connectée${p.seeds > 1 ? 's' : ''} sur ${p.seeds_total}` : '—'],
+    ['Pairs', p.peers_total >= 0 ? `${p.peers} connecté${p.peers > 1 ? 's' : ''} sur ${p.peers_total}` : '—'],
+    ['Pièces', p.pieces_num > 0 ? `${p.pieces_have} / ${p.pieces_num} (${fmtSize(p.piece_size)})` : '—'],
+    ['Dossier', p.save_path ? `<span class="folderlink" data-folder="${esc(normalize(p.save_path))}">${esc(normalize(p.save_path))}</span>` : '—', true],
+  ];
+  if (p.comment) rows.push(['Commentaire', esc(p.comment), true]);
+  return `<dl class="kv">${rows.map(([k, v, html]) => `<div><dt>${k}</dt><dd>${html ? v : esc(v)}</dd></div>`).join('')}</dl>`;
+}
+function filesHTML(t) {
+  const files = det.files || [];
+  if (!files.length) return `<div class="empty" style="padding:30px"><strong>Liste des fichiers pas encore disponible</strong><span>Elle apparaîtra quand qBittorrent aura récupéré les informations du torrent (liens magnet).</span></div>`;
+  // Retire le dossier racine commun (souvent le nom du torrent) pour des noms lisibles
+  const first = files[0].name.split('/');
+  const root = first.length > 1 && files.every((f) => f.name.startsWith(first[0] + '/')) ? first[0] + '/' : '';
+  const list = files.map((f, i) => ({ ...f, idx: f.index ?? i, short: f.name.slice(root.length) })).sort((a, b) => coll.compare(a.short, b.short));
+  const allOn = list.every((f) => f.priority > 0);
+  return `<table><thead><tr>
+      <th class="ck"><input type="checkbox" data-fprio-all ${allOn ? 'checked' : ''} title="Tout télécharger / ne rien télécharger"></th>
+      <th>Nom du fichier</th><th class="num">Taille</th><th class="hide-sm">Type</th><th>Progression</th><th class="hide-sm">Terminé</th>
+    </tr></thead><tbody>${list.map((f) => {
+      const pct = Math.floor(f.progress * 1000) / 10, skip = f.priority === 0;
+      const ext = (f.name.match(/\.([^./]{1,6})$/) || [])[1];
+      const fin = skip ? 'Ignoré' : f.progress >= 1 ? 'Oui' : 'Non';
+      return `<tr class="${skip ? 'skip' : ''}">
+        <td class="ck"><input type="checkbox" data-fprio="${f.idx}" ${skip ? '' : 'checked'} title="${skip ? 'Ne sera pas téléchargé' : 'Sera téléchargé'}"></td>
+        <td><div class="name" title="${esc(f.name)}">${I.file(18)}<span>${esc(f.short)}</span></div></td>
+        <td class="num">${fmtSize(f.size)}</td>
+        <td class="hide-sm muted">${ext ? ext.toLowerCase() : '—'}</td>
+        <td><div class="prog ${skip ? 'stop' : pct >= 100 ? 'done' : ''}"><i style="width:${pct}%"></i><b>${pct.toLocaleString('fr-FR')} %</b></div></td>
+        <td class="hide-sm">${fin}</td></tr>`;
+    }).join('')}</tbody></table>`;
+}
+async function setFilePriority(ids, on) {
+  const r = await post('torrents/filePrio', { hash: det.hash, id: ids.join('|'), priority: on ? '1' : '0' });
+  if (!r.ok) toast('Modification refusée par qBittorrent', true);
+  loadDetails();
 }
 
 /* ---------- Fenêtres ---------- */
@@ -699,11 +820,20 @@ document.addEventListener('click', async (e) => {
     if (a === 'delete') return deleteDialog();
   }
 
-  // Sélection dans la liste des torrents
+  // Panneau de détails : onglets, fermeture, fichiers à télécharger ou non
+  const dt = t.closest('[data-dtab]');
+  if (dt) { det.tab = dt.dataset.dtab; store.set('dtab', det.tab); return renderDetails(); }
+  if (t.closest('[data-act=closedet]')) return closeDetails();
+  if (t.matches('[data-fprio]')) return setFilePriority([t.dataset.fprio], t.checked);
+  if (t.matches('[data-fprio-all]')) return setFilePriority((det.files || []).map((f, i) => f.index ?? i), t.checked);
+
+  // Liste des torrents : un clic sur la ligne sélectionne ce torrent et affiche
+  // ses détails ; la case à cocher permet d'en sélectionner plusieurs.
   const tr = t.closest('tr[data-hash]');
   if (tr && !t.closest('[data-folder]')) {
     const h = tr.dataset.hash;
-    state.sel.has(h) ? state.sel.delete(h) : state.sel.add(h);
+    if (t.matches('input[type=checkbox]')) state.sel.has(h) ? state.sel.delete(h) : state.sel.add(h);
+    else { state.sel = new Set([h]); openDetails(h); }
     renderTorrentRows(); renderToolbar(); return renderStatus();
   }
   if (t.id === 'selall') {
@@ -808,6 +938,7 @@ async function poll() {
       const before = state.sel.size;
       renderTorrentRows();
       if (state.sel.size !== before) renderToolbar(); // un torrent sélectionné a disparu
+      if (det.hash) { if (state.torrents.some((x) => x.hash === det.hash)) loadDetails(); else renderDetails(); }
     }
     renderStatus();
   } catch (_) {}

@@ -2,6 +2,13 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.0.5
+- Panneau de détails quand on clique sur un torrent, comme dans Download Station :
+  - onglet **Informations** : heure de début, durée écoulée, temps restant, progression, téléchargé, envoyé, vitesses, ratio de partage, sources et pairs ;
+  - onglet **Fichiers** : progression de chaque fichier (pratique pour suivre les épisodes d'une saison), avec la possibilité de ne pas télécharger certains fichiers.
+- Un clic sur une ligne sélectionne ce torrent ; les cases à cocher permettent toujours d'en sélectionner plusieurs.
+- Barre du haut plus compacte sur téléphone.
+
 ## 5.3.0.4
 - Mot de passe initial `admin` / `adminadmin`, à changer obligatoirement à la première connexion.
 - Un mot de passe déjà défini n'est jamais écrasé lors d'une mise à jour.
