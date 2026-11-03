@@ -80,9 +80,12 @@
   .dtabs .dname { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; color:var(--muted); font-size:12px; padding:0 8px; }
   .dbody { flex:1; overflow:auto; }
   .kv { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:4px 28px; padding:14px 18px; }
-  .kv div { display:grid; grid-template-columns:150px 1fr; gap:10px; padding:3px 0; }
+  .kv div { display:grid; grid-template-columns:150px minmax(0,1fr); gap:10px; padding:3px 0; min-width:0; }
+  .kv div.wide { grid-column:1 / -1; }
   .kv dt { color:var(--muted); text-align:right; }
-  .kv dd { margin:0; font-variant-numeric:tabular-nums; word-break:break-word; }
+  .kv dd { margin:0; min-width:0; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+  .kv dd .folderlink { white-space:normal; }
+  .kv dd a { color:var(--blue); }
   tr.focus td { box-shadow:inset 0 1px 0 var(--blue), inset 0 -1px 0 var(--blue); }
   tr.skip td { color:var(--grey); }
   .statusbar { display:flex; gap:16px; align-items:center; padding:5px 12px; border-top:1px solid var(--border); background:#fbfcfe; color:var(--muted); font-size:12px; min-height:28px; }
@@ -638,10 +641,14 @@ function infoHTML(t, p) {
     ['Sources', p.seeds_total >= 0 ? `${p.seeds} connectée${p.seeds > 1 ? 's' : ''} sur ${p.seeds_total}` : '—'],
     ['Pairs', p.peers_total >= 0 ? `${p.peers} connecté${p.peers > 1 ? 's' : ''} sur ${p.peers_total}` : '—'],
     ['Pièces', p.pieces_num > 0 ? `${p.pieces_have} / ${p.pieces_num} (${fmtSize(p.piece_size)})` : '—'],
-    ['Dossier', p.save_path ? `<span class="folderlink" data-folder="${esc(normalize(p.save_path))}">${esc(normalize(p.save_path))}</span>` : '—', true],
+    // Valeurs longues : sur toute la largeur du panneau
+    ['Dossier', p.save_path ? `<span class="folderlink" data-folder="${esc(normalize(p.save_path))}">${esc(normalize(p.save_path))}</span>` : '—', true, true],
   ];
-  if (p.comment) rows.push(['Commentaire', esc(p.comment), true]);
-  return `<dl class="kv">${rows.map(([k, v, html]) => `<div><dt>${k}</dt><dd>${html ? v : esc(v)}</dd></div>`).join('')}</dl>`;
+  if (p.comment) {
+    const c = p.comment.trim();
+    rows.push(['Commentaire', /^https?:\/\/\S+$/i.test(c) ? `<a href="${esc(c)}" target="_blank" rel="noopener noreferrer">${esc(c)}</a>` : esc(c), true, true]);
+  }
+  return `<dl class="kv">${rows.map(([k, v, html, wide]) => `<div${wide ? ' class="wide"' : ''}><dt>${k}</dt><dd>${html ? v : esc(v)}</dd></div>`).join('')}</dl>`;
 }
 function filesHTML(t) {
   const files = det.files || [];

@@ -2,6 +2,10 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.0.6
+- Panneau de détails : les champs « Dossier » et « Commentaire » ne se chevauchent plus (affichés sur toute la largeur, avec retour à la ligne).
+- Une adresse web en commentaire (ex. page nyaa.si du torrent) est cliquable.
+
 ## 5.3.0.5
 - Panneau de détails quand on clique sur un torrent, comme dans Download Station :
   - onglet **Informations** : heure de début, durée écoulée, temps restant, progression, téléchargé, envoyé, vitesses, ratio de partage, sources et pairs ;
