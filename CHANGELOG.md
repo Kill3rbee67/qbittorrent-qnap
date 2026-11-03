@@ -2,6 +2,11 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.0.7
+- **Correction** : les torrents restaient « En attente de sources » quand Download Station était encore installé. Les deux utilisaient le port 6881 et qBittorrent ne pouvait alors contacter aucun tracker. Nouveau port par défaut **51881**, et si le port configuré est déjà pris au démarrage, un port libre est choisi automatiquement (indiqué dans le journal).
+- Panneau de détails : onglets **Trackers** (état et message d'erreur de chaque tracker, avec une aide au diagnostic) et **Pairs** (clients connectés).
+- Barre du bas : état de la connexion au réseau BitTorrent et nombre de nœuds DHT.
+
 ## 5.3.0.6
 - Panneau de détails : les champs « Dossier » et « Commentaire » ne se chevauchent plus (affichés sur toute la largeur, avec retour à la ligne).
 - Une adresse web en commentaire (ex. page nyaa.si du torrent) est cliquable.

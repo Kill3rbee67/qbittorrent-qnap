@@ -11,7 +11,9 @@ LOG="$QPKG_ROOT/qbittorrent.log"
 WEBUI_DIR="$QPKG_ROOT/webui"
 PIDFILE="/var/run/qBittorrent.pid"
 WEBUI_PORT=8085
-TORRENT_PORT=6881
+# Port BitTorrent par défaut. Pas 6881 : c'est celui de Download Station, et si
+# le port est déjà pris, qBittorrent ne contacte aucun tracker (DHT : 0 nœud).
+TORRENT_PORT=51881
 
 is_running() {
     [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null
@@ -46,6 +48,25 @@ General\Locale=fr
 WebUI\Port=$WEBUI_PORT
 WebUI\Address=*
 EOF
+}
+
+# Si le port BitTorrent configuré est déjà utilisé par un autre programme
+# (typiquement Download Station sur 6881), passe sur un port libre.
+# Appelé avant le lancement : qBittorrent ne tourne pas, donc tout processus
+# à l'écoute sur ce port est un autre programme.
+port_in_use() {
+    netstat -tuln 2>/dev/null | awk '{ print $4 }' | grep -qE "[:.]$1\$"
+}
+fix_port() {
+    command -v netstat >/dev/null 2>&1 || return 0
+    CUR=`sed -n 's/^Session\\\\Port=\([0-9]*\)$/\1/p' "$CONFIG_FILE" | head -n 1`
+    [ -n "$CUR" ] || return 0
+    port_in_use "$CUR" || return 0
+    NEW=$TORRENT_PORT
+    while port_in_use "$NEW" && [ "$NEW" -lt $((TORRENT_PORT + 20)) ]; do NEW=$((NEW + 1)); done
+    [ "$NEW" = "$CUR" ] && return 0
+    sed -i "s/^Session\\\\Port=$CUR\$/Session\\\\Port=$NEW/" "$CONFIG_FILE"
+    echo "`date '+%F %T'` Port BitTorrent $CUR déjà utilisé par un autre programme (Download Station ?) : passage sur le port $NEW" >> "$LOG"
 }
 
 # Mot de passe initial de l'interface web : admin / adminadmin
@@ -102,6 +123,7 @@ case "$1" in
 
     seed_config
     ensure_webui
+    fix_port
     # Évite un journal qui grossit indéfiniment
     if [ -f "$LOG" ] && [ "$(wc -c < "$LOG")" -gt 1048576 ]; then
         : > "$LOG"

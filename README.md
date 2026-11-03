@@ -54,7 +54,7 @@ Vous pourrez ensuite le modifier à tout moment avec le bouton « Mot de passe �
 | | |
 |---|---|
 | Interface web | port **8085** (le 8080 est utilisé par QTS) |
-| Port BitTorrent | **6881** : pour de bons débits, redirigez-le vers le NAS sur votre box |
+| Port BitTorrent | **51881** : pour de bons débits, redirigez-le vers le NAS sur votre box. Si ce port est déjà pris au démarrage, un port libre proche est choisi automatiquement (voir le journal). |
 | Dossier de téléchargement par défaut | dossier partagé **Download** de QTS |
 | Journal | `/share/CACHEDEV1_DATA/.qpkg/qBittorrent/qbittorrent.log` (le volume peut varier) |
 | Réglages et torrents | dossier `profile/` du paquet, conservés lors des mises à jour |
@@ -71,6 +71,9 @@ Vérifiez que l'application est activée dans l'App Center, puis consultez le jo
 /etc/init.d/qBittorrent.sh start
 cat /share/CACHEDEV1_DATA/.qpkg/qBittorrent/qbittorrent.log
 ```
+
+**Les téléchargements restent « En attente de sources » alors que le torrent a des seeders**
+Ouvrez le torrent, onglet **Trackers**. Si tous les trackers restent « Pas encore contacté » et que la barre du bas indique **DHT : 0 nœuds**, qBittorrent n'arrive pas à ouvrir son port BitTorrent, généralement parce que **Download Station** l'utilise déjà (port 6881). Redémarrez qBittorrent depuis l'App Center : un port libre est choisi automatiquement. Vous pouvez aussi changer le port dans Interface classique › Outils › Options › Connexion. Si les trackers affichent une erreur, lisez la colonne « Message » : pare-feu (QuFirewall), VPN, proxy ou DNS.
 
 **qBittorrent ne démarre plus après une mise à jour du firmware**
 Une mise à jour de QTS peut désactiver l'option « Autoriser l'installation d'applications sans signature numérique valide ». Réactivez-la dans l'App Center.

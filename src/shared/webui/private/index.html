@@ -205,6 +205,8 @@
       <div class="dtabs">
         <button class="tab" data-dtab="info">Informations</button>
         <button class="tab" data-dtab="files">Fichiers</button>
+        <button class="tab" data-dtab="trackers">Trackers</button>
+        <button class="tab" data-dtab="peers">Pairs</button>
         <span class="dname" id="dname"></span>
         <button class="ibtn" data-act="closedet" title="Fermer le panneau" aria-label="Fermer">✕</button>
       </div>
@@ -568,7 +570,7 @@ function renderStatus() {
   const sb = $('#statusbar');
   if (state.view === 'torrents') {
     const n = visibleTorrents().length;
-    sb.innerHTML = `<span>${n} torrent${n > 1 ? 's' : ''}</span>${state.sel.size ? `<span>${state.sel.size} sélectionné${state.sel.size > 1 ? 's' : ''}</span>` : ''}`;
+    sb.innerHTML = `<span>${n} torrent${n > 1 ? 's' : ''}</span>${state.sel.size ? `<span>${state.sel.size} sélectionné${state.sel.size > 1 ? 's' : ''}</span>` : ''}${connHTML()}`;
     return;
   }
   if (state.loading) { sb.innerHTML = ''; return; }
@@ -577,6 +579,18 @@ function renderStatus() {
   sb.innerHTML = `<span>${state.dirs.length} dossier${state.dirs.length > 1 ? 's' : ''}, ${state.files.length} fichier${state.files.length > 1 ? 's' : ''}${nt ? ` dont ${nt} .torrent` : ''}</span>
     ${state.fileSel.size ? `<span>${state.fileSel.size} sélectionné${state.fileSel.size > 1 ? 's' : ''}</span>` : ''}
     ${here ? `<a data-here>${here} téléchargement${here > 1 ? 's' : ''} enregistré${here > 1 ? 's' : ''} ici</a>` : ''}`;
+}
+
+// État de la connexion au réseau BitTorrent (barre du bas)
+function connHTML() {
+  const c = state.conn;
+  if (!c) return '';
+  const [label, cls, tip] = {
+    connected: ['Connecté', 'done', 'Les autres clients peuvent se connecter au NAS.'],
+    firewalled: ['Port entrant fermé', 'wait', `Le téléchargement fonctionne, mais plus lentement : redirigez le port BitTorrent vers le NAS sur votre box.`],
+    disconnected: ['Pas de connexion au réseau BitTorrent', 'err', 'qBittorrent ne parvient pas à accéder au réseau : vérifiez le pare-feu, le VPN ou le proxy du NAS.'],
+  }[c.connection_status] || [c.connection_status || '—', 'wait', ''];
+  return `<span class="grow"></span><span class="st ${cls}" title="${esc(tip)}">${label}</span><span title="Nœuds du réseau DHT : 0 signifie que le NAS n'arrive pas à joindre le réseau sans tracker">DHT : ${c.dht_nodes ?? '—'} nœuds</span>`;
 }
 
 function renderAll() {
@@ -593,20 +607,61 @@ function fmtDur(s) {
   const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
   return [d && `${d} j`, (d || h) && `${h} h`, `${m} min`].filter(Boolean).join(' ');
 }
-function openDetails(hash) { det.hash = hash; det.props = det.files = null; renderDetails(); loadDetails(); }
+function openDetails(hash) { det.hash = hash; det.props = det.files = det.trackers = det.peers = null; renderDetails(); loadDetails(); }
 function closeDetails() { det.hash = null; renderDetails(); renderTorrentRows(); }
 async function loadDetails() {
   if (!det.hash || state.view !== 'torrents') return;
   const h = det.hash, tok = ++det.token;
+  const json = (path) => api(path).then((r) => (r.ok ? r.json() : null));
   try {
-    const [p, f] = await Promise.all([
-      api('torrents/properties?hash=' + h).then((r) => (r.ok ? r.json() : null)),
-      api('torrents/files?hash=' + h).then((r) => (r.ok ? r.json() : null)),
+    const [p, f, tr, pe] = await Promise.all([
+      json('torrents/properties?hash=' + h),
+      json('torrents/files?hash=' + h),
+      json('torrents/trackers?hash=' + h),
+      det.tab === 'peers' ? json('sync/torrentPeers?rid=0&hash=' + h) : Promise.resolve(det.peers),
     ]);
     if (tok !== det.token || h !== det.hash) return;
-    det.props = p; det.files = f;
+    det.props = p; det.files = f; det.trackers = tr;
+    det.peers = det.tab === 'peers' ? (pe && pe.peers) || {} : null;
     renderDetails();
   } catch (_) {}
+}
+
+// État d'un tracker (API qBittorrent : 0 désactivé, 1 pas encore contacté, 2 OK, 3 mise à jour, 4 erreur)
+const TRK = { 0: ['Désactivé', 'stop'], 1: ['Pas encore contacté', 'wait'], 2: ['Fonctionne', 'done'], 3: ['Mise à jour…', 'wait'], 4: ['Ne fonctionne pas', 'err'] };
+function trackersHTML() {
+  const list = det.trackers || [];
+  if (!list.length) return `<div class="empty" style="padding:30px">Aucun tracker.</div>`;
+  const pseudo = { '** [DHT] **': 'DHT (réseau sans tracker)', '** [PeX] **': 'PeX (échange entre pairs)', '** [LSD] **': 'LSD (réseau local)' };
+  const rows = list.map((x) => {
+    const [label, cls] = TRK[x.status] || ['—', 'wait'];
+    // qBittorrent 5.x : le message d'erreur peut être porté par chaque « endpoint »
+    const msgs = [x.msg, ...((x.endpoints || []).map((e) => e.msg))].filter(Boolean);
+    const n = (v) => (v >= 0 ? v : '—');
+    return `<tr>
+      <td><div class="name"><span title="${esc(x.url)}">${esc(pseudo[x.url] || x.url)}</span></div></td>
+      <td><span class="st ${cls}">${label}</span></td>
+      <td class="num">${n(x.num_seeds)}</td><td class="num">${n(x.num_leeches)}</td><td class="num hide-sm">${n(x.num_peers)}</td>
+      <td class="hide-sm muted" style="max-width:420px;overflow-wrap:anywhere">${esc([...new Set(msgs)].join(' · ')) || '—'}</td></tr>`;
+  }).join('');
+  const working = list.some((x) => x.status === 2 && !pseudo[x.url]);
+  const real = list.filter((x) => !pseudo[x.url]);
+  const hint = real.length && !working && real.every((x) => x.status === 4 || x.status === 1)
+    ? `<div class="hint" style="margin:10px 12px">Aucun tracker ne répond : qBittorrent ne reçoit donc aucune liste de sources. ${real.every((x) => x.status === 1) && state.conn && !state.conn.dht_nodes
+      ? 'Les trackers n\'ont même pas été contactés et le DHT est vide : qBittorrent n\'arrive pas à ouvrir son port BitTorrent. Il est sans doute déjà utilisé par un autre programme (Download Station utilise 6881) : redémarrez qBittorrent depuis l\'App Center, il choisira alors un port libre, ou changez le port dans Interface classique › Outils › Options › Connexion.'
+      : 'Lisez la colonne « Message ». Causes fréquentes : pare-feu du NAS (QuFirewall), VPN ou proxy, problème de DNS, ou tracker bloqué par le fournisseur d\'accès.'}</div>` : '';
+  return hint + `<table><thead><tr><th>Tracker</th><th>État</th><th class="num">Sources</th><th class="num">Clients</th><th class="num hide-sm">Pairs reçus</th><th class="hide-sm">Message</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function peersHTML() {
+  const peers = Object.values(det.peers || {});
+  if (!peers.length) return `<div class="empty" style="padding:30px"><strong>Aucun pair connecté</strong><span>Voir l'onglet Trackers pour savoir si des sources ont été trouvées.</span></div>`;
+  peers.sort((a, b) => (b.dl_speed - a.dl_speed) || (b.progress - a.progress));
+  return `<table><thead><tr><th>Adresse</th><th class="hide-sm">Client</th><th>Progression</th><th class="num">Réception</th><th class="num">Envoi</th><th class="hide-md">Pays</th></tr></thead><tbody>${peers.map((x) => {
+    const pct = Math.floor((x.progress || 0) * 1000) / 10;
+    return `<tr><td class="muted">${esc(x.ip)}:${x.port}</td><td class="hide-sm">${esc(x.client || '—')}</td>
+      <td><div class="prog ${pct >= 100 ? 'done' : ''}"><i style="width:${pct}%"></i><b>${pct.toLocaleString('fr-FR')} %</b></div></td>
+      <td class="num">${fmtSpeed(x.dl_speed)}</td><td class="num">${fmtSpeed(x.up_speed)}</td><td class="hide-md">${esc(x.country || '—')}</td></tr>`;
+  }).join('')}</tbody></table>`;
 }
 function renderDetails() {
   const box = $('#details');
@@ -616,11 +671,13 @@ function renderDetails() {
   box.querySelectorAll('[data-dtab]').forEach((b) => {
     b.classList.toggle('on', b.dataset.dtab === det.tab);
     if (b.dataset.dtab === 'files') b.textContent = 'Fichiers' + (det.files && det.files.length ? ` (${det.files.length})` : '');
+    if (b.dataset.dtab === 'peers' && det.props) b.textContent = `Pairs (${(det.props.seeds || 0) + (det.props.peers || 0)})`;
   });
   $('#dname').textContent = t ? t.name : '';
   const body = $('#dbody');
   if (!det.props && !det.files) { body.innerHTML = `<div class="empty" style="padding:30px">Chargement…</div>`; return; }
-  body.innerHTML = det.tab === 'files' ? filesHTML(t) : infoHTML(t, det.props || {});
+  if (det.tab === 'peers' && det.peers === null) { body.innerHTML = `<div class="empty" style="padding:30px">Chargement…</div>`; return; }
+  body.innerHTML = det.tab === 'files' ? filesHTML(t) : det.tab === 'trackers' ? trackersHTML() : det.tab === 'peers' ? peersHTML() : infoHTML(t, det.props || {});
 }
 function infoHTML(t, p) {
   const [label] = (t && ST[t.state]) || [t ? t.state : '—'];
@@ -829,7 +886,11 @@ document.addEventListener('click', async (e) => {
 
   // Panneau de détails : onglets, fermeture, fichiers à télécharger ou non
   const dt = t.closest('[data-dtab]');
-  if (dt) { det.tab = dt.dataset.dtab; store.set('dtab', det.tab); return renderDetails(); }
+  if (dt) {
+    det.tab = dt.dataset.dtab; store.set('dtab', det.tab);
+    if (det.tab === 'peers') { det.peers = null; loadDetails(); }
+    return renderDetails();
+  }
   if (t.closest('[data-act=closedet]')) return closeDetails();
   if (t.matches('[data-fprio]')) return setFilePriority([t.dataset.fprio], t.checked);
   if (t.matches('[data-fprio-all]')) return setFilePriority((det.files || []).map((f, i) => f.index ?? i), t.checked);
@@ -940,6 +1001,7 @@ async function poll() {
     state.torrents = tl;
     $('#spd-dl').textContent = '↓ ' + fmtSpeed(tr.dl_info_speed);
     $('#spd-up').textContent = '↑ ' + fmtSpeed(tr.up_info_speed);
+    state.conn = tr;
     renderFilters();
     if (state.view === 'torrents') {
       const before = state.sel.size;
