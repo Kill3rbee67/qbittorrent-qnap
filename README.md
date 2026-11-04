@@ -13,7 +13,7 @@ Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorr
   - fichiers `.torrent` déjà présents sur le NAS (cocher ou double-cliquer).
 - **Création de dossiers** à la volée : le dossier est créé au premier téléchargement.
 - **Barre de menus et réglages** comme dans qBittorrent : Fichier, Édition (forcer la reprise, déplacer, revérifier, file d'attente…), Affichage (journal, statistiques), Outils (réglages, limites de vitesse alternatives), avec un clic droit sur les torrents. La fenêtre **Réglages** regroupe en français les réglages les plus utiles : téléchargements simultanés, vitesses et horaires, port, partage, RSS.
-- **Abonnements RSS** : depuis le dossier d'une série, « S'abonner (RSS) » avec l'adresse d'une recherche nyaa.si, et chaque nouvel épisode publié est téléchargé automatiquement dans ce dossier.
+- **Abonnements RSS** : depuis le dossier d'une série, « S'abonner (RSS) » avec l'adresse d'une recherche, et chaque nouvel épisode publié est téléchargé automatiquement dans ce dossier.
 - **Suivi des téléchargements** : progression, vitesses, temps restant, filtres (en cours, terminés, arrêtés, en erreur), démarrer, arrêter, supprimer avec ou sans les fichiers.
 - **Première connexion simple** : identifiants initiaux connus, changement de mot de passe imposé.
 - L'**interface d'origine** de qBittorrent (en français) est incluse : bouton « ⇄ Interface classique » pour y aller, bouton « ⇄ Interface explorateur » pour revenir. Les deux restent disponibles, sans rien changer dans les réglages.
