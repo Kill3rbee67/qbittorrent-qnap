@@ -3,7 +3,7 @@
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
 ## 5.3.0.9
-- **Abonnements RSS** : bouton « S'abonner (RSS) » dans chaque dossier. On colle l'adresse d'une recherche nyaa.si (convertie automatiquement en flux RSS), et les nouveaux épisodes sont téléchargés automatiquement dans ce dossier. Seuls les épisodes à venir sont pris par défaut, sans doublon.
+- **Abonnements RSS** : bouton « S'abonner (RSS) » dans chaque dossier. On colle l'adresse d'une recherche (convertie automatiquement en flux RSS), et les nouveaux épisodes sont téléchargés automatiquement dans ce dossier. Seuls les épisodes à venir sont pris par défaut, sans doublon.
 - Page « Abonnements RSS » : liste des abonnements avec dernier ajout et état du flux, suspendre / modifier / supprimer, vérification immédiate, fréquence de vérification réglable.
 - Le RSS de qBittorrent est activé automatiquement au premier abonnement.
 
