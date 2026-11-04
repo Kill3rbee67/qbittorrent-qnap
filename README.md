@@ -12,6 +12,7 @@ Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorr
   - liens magnet ;
   - fichiers `.torrent` déjà présents sur le NAS (cocher ou double-cliquer).
 - **Création de dossiers** à la volée : le dossier est créé au premier téléchargement.
+- **Abonnements RSS** : depuis le dossier d'une série, « S'abonner (RSS) » avec l'adresse d'une recherche nyaa.si, et chaque nouvel épisode publié est téléchargé automatiquement dans ce dossier.
 - **Suivi des téléchargements** : progression, vitesses, temps restant, filtres (en cours, terminés, arrêtés, en erreur), démarrer, arrêter, supprimer avec ou sans les fichiers.
 - **Première connexion simple** : identifiants initiaux connus, changement de mot de passe imposé.
 - L'**interface d'origine** de qBittorrent (en français) est incluse : bouton « ⇄ Interface classique » pour y aller, bouton « ⇄ Interface explorateur » pour revenir. Les deux restent disponibles, sans rien changer dans les réglages.
@@ -48,6 +49,14 @@ Vous devrez immédiatement choisir votre propre mot de passe. Changez-le dès l'
 ![Choix du mot de passe à la première connexion](docs/captures/premiere-connexion.png)
 
 Vous pourrez ensuite le modifier à tout moment avec le bouton « Mot de passe ».
+
+## Télécharger automatiquement une série (RSS)
+
+1. Sur nyaa.si, faites la recherche qui correspond aux sorties voulues, par exemple `Tsundere-Raws Nia Liston 1080p`, et copiez l'adresse de la page de résultats.
+2. Dans l'explorateur, ouvrez (ou créez) le dossier où ranger la série, puis cliquez sur **« S'abonner (RSS) »** et collez l'adresse. Elle est convertie automatiquement en flux RSS.
+3. Facultatif : affinez avec « Le titre doit contenir » / « ne doit pas contenir » (`720p|Batch`…).
+
+Par défaut, seuls les **épisodes à venir** sont téléchargés (cochez « Télécharger aussi les épisodes déjà publiés » pour rattraper ceux du flux), et un même épisode n'est jamais téléchargé deux fois. La page **Abonnements RSS** permet de suspendre, modifier ou supprimer un abonnement, de forcer une vérification et de régler la fréquence de vérification des flux (30 minutes par défaut).
 
 ## Bon à savoir
 

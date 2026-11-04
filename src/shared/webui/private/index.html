@@ -194,6 +194,8 @@
   <aside class="side" id="side">
     <div class="sec">Téléchargements</div>
     <div id="filters"></div>
+    <div class="sec">Automatique</div>
+    <div id="rssnav"></div>
     <div class="sec">Dossiers du NAS</div>
     <div id="tree" role="tree"><div class="tree-msg">Chargement…</div></div>
   </aside>
@@ -231,6 +233,7 @@ const I = {
   torrent: (s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2.5h9.5L19 7v14.5H5z" fill="#fff" stroke="#7d93ad"/><path d="M14.5 2.5V7H19" fill="#e3eefb" stroke="#7d93ad"/><path d="M10.6 9.5h2.8v4.3h2.3L12 17.8l-3.7-4h2.3z" fill="var(--blue)"/></svg>`,
   file: (s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2.5h9.5L19 7v14.5H5z" fill="#fff" stroke="#a7b3c2"/><path d="M14.5 2.5V7H19" fill="#eef1f5" stroke="#a7b3c2"/></svg>`,
   magnet: (s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v8a7 7 0 0 0 14 0V3h-4.5v8a2.5 2.5 0 0 1-5 0V3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M5 7.5h4.5M14.5 7.5H19" stroke="currentColor" stroke-width="1.8"/></svg>`,
+  rss: (s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11a8 8 0 0 1 8 8M5 5a14 14 0 0 1 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="6" cy="18" r="1.8" fill="currentColor"/></svg>`,
   upload: () => `<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-5 5m5-5 5 5M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   plus: () => `<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`,
   newdir: () => `<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.2l2 2h8.8A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 10.5v5M9.5 13h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
@@ -361,6 +364,7 @@ function renderFilters() {
     const on = state.view === 'torrents' && state.filter === k && !state.pathFilter;
     return `<div class="nav${on ? ' on' : ''}" data-filter="${k}">${label}<span class="cnt">${state.torrents.filter(fn).length}</span></div>`;
   }).join('');
+  $('#rssnav').innerHTML = `<div class="nav${state.view === 'rss' ? ' on' : ''}" data-view="rss">${I.rss()}Abonnements RSS<span class="cnt">${rss.loaded ? Object.keys(rss.rules).length : '…'}</span></div>`;
 }
 function kidsOf(p) {
   const k = [...(tree.kids.get(p) || [])];
@@ -443,12 +447,22 @@ function renderToolbar() {
       <button class="btn danger" data-act="delete" ${n ? '' : 'disabled'}>${I.trash()}Supprimer</button>
       <span class="grow"></span>
       <input class="search" type="search" data-search="search" placeholder="Rechercher un torrent" value="${esc(state.search)}">`;
+  } else if (state.view === 'rss') {
+    const iv = rss.prefs ? rss.prefs.rss_refresh_interval : 30;
+    const opts = [...new Set([5, 10, 15, 30, 60, 120, iv])].sort((a, b) => a - b);
+    tb.innerHTML = `
+      <button class="btn primary" data-act="rssnew">${I.plus()}<span>Nouvel abonnement</span></button>
+      <button class="btn" data-act="rssrefresh">${I.refresh()}<span>Vérifier<span class="lbl-long"> maintenant</span></span></button>
+      <span class="grow"></span>
+      <label class="muted" style="display:flex;align-items:center;gap:6px;white-space:nowrap">Vérifier les flux toutes les
+        <select class="search" style="width:auto" data-rssint>${opts.map((m) => `<option value="${m}" ${m === iv ? 'selected' : ''}>${m} min</option>`).join('')}</select></label>`;
   } else {
     const n = state.fileSel.size;
     tb.innerHTML = `
       <button class="btn primary" data-act="pc">${I.upload()}<span>Importer<span class="lbl-long"> depuis le PC</span></span></button>
       <button class="btn" data-act="magnet">${I.magnet(16)}<span>Lien magnet</span></button>
       <button class="btn" data-act="mkdir">${I.newdir()}<span>Nouveau dossier</span></button>
+      <button class="btn" data-act="subscribe" title="Télécharger automatiquement dans ce dossier les nouvelles sorties d'un flux RSS (ex. une recherche nyaa)">${I.rss()}<span>S'abonner<span class="lbl-long"> (RSS)</span></span></button>
       <button class="btn" data-act="addsel" ${n ? '' : 'disabled'} title="Ajouter les fichiers .torrent cochés de ce dossier">${I.plus()}Ajouter la sélection${n ? ` (${n})` : ''}</button>
       <span class="grow"></span>
       <input class="search" type="search" data-search="fsearch" placeholder="Filtrer ce dossier" value="${esc(state.fsearch)}">
@@ -464,6 +478,7 @@ function renderPathbar() {
       : `<b>${f ? f[1] : ''}</b>`}</div>`;
     return;
   }
+  if (state.view === 'rss') { pb.innerHTML = `<div class="crumbs"><b>Abonnements RSS</b></div>`; return; }
   const p = state.path, segs = [];
   let acc = ROOT;
   segs.push(`<a data-crumb="${esc(ROOT)}">NAS</a>`);
@@ -573,6 +588,11 @@ function renderStatus() {
     sb.innerHTML = `<span>${n} torrent${n > 1 ? 's' : ''}</span>${state.sel.size ? `<span>${state.sel.size} sélectionné${state.sel.size > 1 ? 's' : ''}</span>` : ''}${connHTML()}`;
     return;
   }
+  if (state.view === 'rss') {
+    const n = Object.keys(rss.rules).length, on = Object.values(rss.rules).filter((r) => r.enabled).length;
+    sb.innerHTML = rss.loaded ? `<span>${n} abonnement${n > 1 ? 's' : ''}${n ? `, ${on} actif${on > 1 ? 's' : ''}` : ''}</span>${connHTML()}` : '';
+    return;
+  }
   if (state.loading) { sb.innerHTML = ''; return; }
   const nt = state.files.filter(isTorrentFile).length;
   const here = state.torrents.filter((t) => normalize(t.save_path) === state.path).length;
@@ -595,8 +615,201 @@ function connHTML() {
 
 function renderAll() {
   renderFilters(); renderTree(); renderToolbar(); renderPathbar();
-  if (state.view === 'torrents') renderTorrentsView(); else renderFolderView();
+  if (state.view === 'torrents') renderTorrentsView(); else if (state.view === 'rss') renderRssView(); else renderFolderView();
   renderStatus(); renderDetails();
+}
+
+/* ---------- Abonnements RSS (téléchargement automatique des nouvelles sorties) ---------- */
+// Un abonnement = un flux RSS + une règle de téléchargement qBittorrent du même nom.
+const rss = { rules: {}, feeds: [], prefs: null, loaded: false, last: 0 };
+function flattenFeeds(obj, prefix = '') {
+  const out = [];
+  for (const [k, v] of Object.entries(obj || {})) {
+    if (v && typeof v === 'object' && 'url' in v) out.push({ path: prefix + k, ...v });
+    else out.push(...flattenFeeds(v, prefix + k + '\\'));
+  }
+  return out;
+}
+const feedOf = (rule) => rss.feeds.find((f) => (rule.affectedFeeds || []).includes(f.url));
+const ruleDest = (rule) => normalize((rule.torrentParams && rule.torrentParams.save_path) || rule.savePath || '') || '';
+async function loadRss() {
+  rss.last = Date.now();
+  try {
+    const [rules, items, prefs] = await Promise.all([
+      api('rss/rules').then((r) => (r.ok ? r.json() : {})),
+      api('rss/items?withData=true').then((r) => (r.ok ? r.json() : {})),
+      api('app/preferences').then((r) => (r.ok ? r.json() : null)),
+    ]);
+    rss.rules = rules || {}; rss.feeds = flattenFeeds(items); rss.prefs = prefs;
+    rss.loaded = true;
+  } catch (_) {}
+  renderFilters();
+  if (state.view === 'rss') { renderRssView(); renderStatus(); }
+}
+function showRss() {
+  Object.assign(state, { view: 'rss', pathFilter: null });
+  document.body.classList.remove('side-open');
+  renderAll(); loadRss();
+}
+function renderRssView() {
+  const c = $('#content');
+  c.removeAttribute('data-drop');
+  if (!rss.loaded) { c.innerHTML = `<div class="empty">Chargement…</div>`; return; }
+  const p = rss.prefs || {};
+  const off = !p.rss_processing_enabled || !p.rss_auto_downloading_enabled;
+  const warn = off && Object.keys(rss.rules).length ? `<div class="hint" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="flex:1">Le téléchargement automatique RSS est désactivé dans qBittorrent : les abonnements ne téléchargent rien.</span>
+      <button class="btn primary" data-act="rssenable">Activer</button></div>` : '';
+  const names = Object.keys(rss.rules).sort(coll.compare);
+  if (!names.length) {
+    c.innerHTML = `<div class="empty">${I.rss(48)}<strong>Aucun abonnement</strong>
+      <span style="max-width:520px">Ouvrez le dossier où ranger une série (par exemple <b>plex › Mangas › Ma série</b>), cliquez sur <b>« S'abonner (RSS) »</b> et collez l'adresse d'une recherche nyaa.si.
+      Chaque nouvel épisode publié sera alors téléchargé automatiquement dans ce dossier.</span>
+      <button class="btn primary" data-act="rssnew">${I.plus()}Nouvel abonnement</button></div>`;
+    return;
+  }
+  const rows = names.map((n) => {
+    const r = rss.rules[n], f = feedOf(r), dest = ruleDest(r);
+    const na = f && f.articles ? f.articles.length : 0;
+    const [st, cls] = !f ? ['Flux introuvable', 'err'] : f.hasError ? ['Flux illisible', 'err'] : f.isLoading ? ['Vérification…', 'wait'] : [`OK · ${na} élément${na > 1 ? 's' : ''}`, 'done'];
+    const filt = [r.mustContain && `contient « ${esc(r.mustContain)} »`, r.mustNotContain && `sauf « ${esc(r.mustNotContain)} »`].filter(Boolean).join('<br>') || '<span class="muted">tout le flux</span>';
+    const last = r.lastMatch ? new Date(r.lastMatch) : null;
+    return `<tr class="${r.enabled ? '' : 'skip'}">
+      <td class="ck"><input type="checkbox" data-rss-toggle="${esc(n)}" ${r.enabled ? 'checked' : ''} title="${r.enabled ? 'Actif : cliquer pour suspendre' : 'Suspendu : cliquer pour réactiver'}"></td>
+      <td><div class="name">${I.rss(18)}<span title="${esc(f ? f.url : (r.affectedFeeds || []).join(' '))}">${esc(n)}</span></div></td>
+      <td class="hide-sm">${filt}</td>
+      <td>${dest ? `<span class="folderlink" data-folder="${esc(dest)}">${esc(relPath(dest))}</span>` : '<span class="muted">dossier par défaut</span>'}</td>
+      <td class="hide-md">${last && !isNaN(last) ? last.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '<span class="muted">aucun</span>'}</td>
+      <td class="hide-sm"><span class="st ${cls}" title="${f && f.hasError ? 'qBittorrent n\'a pas pu lire ce flux : vérifiez l\'adresse et que le NAS accède au site.' : ''}">${st}</span></td>
+      <td style="white-space:nowrap;text-align:right"><button class="btn" data-rss-edit="${esc(n)}">Modifier</button> <button class="btn danger" data-rss-del="${esc(n)}" title="Supprimer l'abonnement">${I.trash()}</button></td></tr>`;
+  }).join('');
+  c.innerHTML = warn + `<table><thead><tr><th class="ck" title="Actif">✓</th><th>Abonnement</th><th class="hide-sm">Filtre</th><th>Dossier</th>
+    <th class="hide-md">Dernier ajout</th><th class="hide-sm">État du flux</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+// Une adresse de recherche nyaa est convertie en flux RSS (ajout de page=rss)
+function toFeedUrl(s) {
+  let u; try { u = new URL(s.trim()); } catch (_) { return null; }
+  if (!/^https?:$/.test(u.protocol)) return null;
+  if (/(^|\.)nyaa\.si$/i.test(u.hostname) && u.searchParams.get('page') !== 'rss') u.searchParams.set('page', 'rss');
+  return u.toString();
+}
+function nameFromUrl(s) {
+  try { const u = new URL(s.trim()); return (u.searchParams.get('q') || u.searchParams.get('term') || '').trim() || u.hostname; } catch (_) { return ''; }
+}
+async function ensureRssEnabled() {
+  const p = rss.prefs || await api('app/preferences').then((r) => r.json());
+  if (p.rss_processing_enabled && p.rss_auto_downloading_enabled) return;
+  await post('app/setPreferences', { json: JSON.stringify({ rss_processing_enabled: true, rss_auto_downloading_enabled: true }) });
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Attend que qBittorrent ait lu le flux. loaded = false si rien n'est arrivé à temps
+// (on ne peut alors pas marquer les épisodes déjà publiés comme vus).
+async function waitFeed(url, ms = 25000) {
+  let f = null;
+  for (const end = Date.now() + ms; Date.now() < end; await sleep(1000)) {
+    f = flattenFeeds(await api('rss/items?withData=true').then((r) => r.json())).find((x) => x.url === url) || null;
+    if (f && !f.isLoading && (f.hasError || (f.articles && f.articles.length) || f.lastBuildDate)) return { feed: f, loaded: !f.hasError };
+  }
+  return { feed: f, loaded: false };
+}
+function subscribeDialog({ dest = state.defaultPath, name = null } = {}) {
+  const r = name ? rss.rules[name] : null, f = r ? feedOf(r) : null;
+  if (r) dest = ruleDest(r) || state.defaultPath;
+  const stopped = r ? !!((r.torrentParams && r.torrentParams.stopped) ?? r.addPaused) : !store.get('startNow', true);
+  dialog({
+    title: r ? `Modifier « ${name} »` : 'Nouvel abonnement RSS', ok: r ? 'Enregistrer' : 'S\'abonner',
+    body: `
+      <label>Adresse de la recherche nyaa ou du flux RSS
+        <input class="field" id="rs-url" ${r ? 'readonly' : ''} value="${esc(f ? f.url : (r ? (r.affectedFeeds || [])[0] || '' : ''))}" placeholder="https://nyaa.si/?f=0&c=1_0&q=Tsundere-Raws+Nia+Liston+1080p" spellcheck="false"></label>
+      ${r ? '' : `<span class="muted" style="font-size:12.5px;margin-top:-6px">Faites votre recherche sur nyaa.si puis copiez l'adresse de la page : elle est convertie automatiquement en flux RSS.</span>
+      <label>Nom de l'abonnement<input class="field" id="rs-name" maxlength="100"></label>`}
+      <label><span>Le titre doit contenir <i>(facultatif)</i></span>
+        <input class="field" id="rs-must" value="${esc(r ? r.mustContain || '' : '')}" placeholder="vide = tout ce que publie le flux · ex. 1080p"></label>
+      <label><span>Le titre ne doit pas contenir <i>(facultatif)</i></span>
+        <input class="field" id="rs-not" value="${esc(r ? r.mustNotContain || '' : '')}" placeholder="ex. 720p|Batch"></label>
+      <span class="muted" style="font-size:12px;margin-top:-6px">Mots séparés par des espaces : tous doivent être présents. <b>|</b> signifie « ou », <b>*</b> remplace n'importe quels caractères.</span>
+      <div class="dest">${I.folder(28)}<div style="flex:1;min-width:0;display:grid;gap:4px"><small>Télécharger les nouveaux épisodes dans</small>
+        <input class="field" id="destp" value="${esc(dest)}" spellcheck="false"></div></div>
+      <label class="chk"><input type="checkbox" id="rs-smart" ${!r || r.smartFilter ? 'checked' : ''}> Ne pas télécharger deux fois le même épisode</label>
+      ${r ? '' : '<label class="chk"><input type="checkbox" id="rs-old"> Télécharger aussi les épisodes déjà publiés dans le flux</label>'}
+      <label class="chk"><input type="checkbox" id="rs-start" ${stopped ? '' : 'checked'}> Démarrer les téléchargements immédiatement</label>`,
+    onOpen: (bd) => {
+      const url = bd.querySelector('#rs-url'), nm = bd.querySelector('#rs-name');
+      if (nm) {
+        nm.addEventListener('input', () => { nm.dataset.touched = '1'; });
+        url.addEventListener('input', () => { if (!nm.dataset.touched) nm.value = nameFromUrl(url.value); });
+      }
+    },
+    onOk: async (bd, err) => {
+      const ok = bd.querySelector('[data-ok]');
+      const destp = bd.querySelector('#destp').value.trim().replace(/\/+$/, '');
+      if (!destp.startsWith('/')) { err('Le dossier doit être un chemin complet (ex. /share/Download).'); return false; }
+      const must = bd.querySelector('#rs-must').value.trim(), not = bd.querySelector('#rs-not').value.trim();
+      const smart = bd.querySelector('#rs-smart').checked, start = bd.querySelector('#rs-start').checked;
+      if (r) {
+        const def = { ...r, mustContain: must, mustNotContain: not, smartFilter: smart, savePath: destp, addPaused: !start,
+          torrentParams: { ...(r.torrentParams || {}), save_path: destp, stopped: !start } };
+        const res = await post('rss/setRule', { ruleName: name, ruleDef: JSON.stringify(def) });
+        if (!res.ok) { err('qBittorrent a refusé la modification.'); return false; }
+        toast('Abonnement mis à jour'); loadRss(); return;
+      }
+      const url = toFeedUrl(bd.querySelector('#rs-url').value);
+      if (!url) { err('Collez une adresse web complète (https://…).'); return false; }
+      const nm = bd.querySelector('#rs-name').value.trim() || nameFromUrl(url);
+      if (!nm || /\\/.test(nm)) { err('Nom invalide (le caractère \\ est interdit).'); return false; }
+      if (rss.rules[nm]) { err('Un abonnement porte déjà ce nom.'); return false; }
+      const old = bd.querySelector('#rs-old').checked;
+      ok.textContent = 'Lecture du flux…';
+      await ensureRssEnabled();
+      let feedPath = nm, created = false;
+      const add = await post('rss/addFeed', { url, path: nm });
+      if (add.ok) created = true;
+      else {
+        const existing = flattenFeeds(await api('rss/items').then((x) => x.json())).find((x) => x.url === url);
+        if (!existing) { ok.textContent = 'S\'abonner'; err('Impossible d\'ajouter ce flux : ' + (await add.text())); return false; }
+        feedPath = existing.path;
+      }
+      await post('rss/refreshItem', { itemPath: feedPath });
+      const { feed, loaded } = await waitFeed(url);
+      // Flux illisible, ou pas encore lu alors qu'il faut ignorer les épisodes déjà publiés
+      if (!feed || feed.hasError || (!loaded && !old)) {
+        if (created) await post('rss/removeItem', { path: feedPath });
+        ok.textContent = 'S\'abonner';
+        err(feed && !feed.hasError
+          ? 'Le site met trop de temps à répondre. Réessayez dans un instant.'
+          : 'qBittorrent n\'a pas pu lire ce flux. Vérifiez l\'adresse (elle doit renvoyer un flux RSS) et que le NAS peut accéder au site.');
+        return false;
+      }
+      // Sans l'option « déjà publiés », seuls les épisodes à venir seront téléchargés
+      if (!old) await post('rss/markAsRead', { itemPath: feedPath });
+      const def = { enabled: true, mustContain: must, mustNotContain: not, useRegex: false, episodeFilter: '', smartFilter: smart,
+        affectedFeeds: [url], savePath: destp, addPaused: !start, torrentParams: { save_path: destp, stopped: !start } };
+      const res = await post('rss/setRule', { ruleName: nm, ruleDef: JSON.stringify(def) });
+      if (!res.ok) { ok.textContent = 'S\'abonner'; err('qBittorrent a refusé l\'abonnement.'); return false; }
+      store.set('startNow', start);
+      const n = (feed.articles || []).length;
+      toast(old ? `Abonnement créé : les épisodes du flux correspondant au filtre vont être téléchargés dans ${base(destp)}`
+                : `Abonnement créé (${n} élément${n > 1 ? 's' : ''} déjà publié${n > 1 ? 's' : ''}, ignoré${n > 1 ? 's' : ''}). Les prochains épisodes iront dans ${base(destp)}.`);
+      loadRss(); setTimeout(poll, 1500);
+    },
+  });
+}
+function deleteRssDialog(name) {
+  dialog({
+    title: `Supprimer l'abonnement « ${name} »`, ok: 'Supprimer',
+    body: `<span>Les nouveaux épisodes ne seront plus téléchargés. Les épisodes déjà téléchargés sont conservés.</span>`,
+    onOk: async () => {
+      const r = rss.rules[name];
+      await post('rss/removeRule', { ruleName: name });
+      // Supprime aussi le flux s'il ne sert plus à aucun autre abonnement
+      for (const url of (r && r.affectedFeeds) || []) {
+        const usedElsewhere = Object.entries(rss.rules).some(([n, x]) => n !== name && (x.affectedFeeds || []).includes(url));
+        const f = rss.feeds.find((x) => x.url === url);
+        if (!usedElsewhere && f) await post('rss/removeItem', { path: f.path });
+      }
+      toast('Abonnement supprimé'); loadRss();
+    },
+  });
 }
 
 /* ---------- Panneau de détails (comme Download Station) ---------- */
@@ -853,6 +1066,18 @@ function deleteDialog() {
 /* ---------- Événements ---------- */
 document.addEventListener('click', async (e) => {
   const t = e.target;
+  // Abonnements RSS
+  if (t.closest('[data-view=rss]')) return showRss();
+  const re = t.closest('[data-rss-edit]');
+  if (re) return subscribeDialog({ name: re.dataset.rssEdit });
+  const rd = t.closest('[data-rss-del]');
+  if (rd) return deleteRssDialog(rd.dataset.rssDel);
+  if (t.matches('[data-rss-toggle]')) {
+    const n = t.dataset.rssToggle, r = rss.rules[n];
+    const res = await post('rss/setRule', { ruleName: n, ruleDef: JSON.stringify({ ...r, enabled: t.checked }) });
+    toast(res.ok ? (t.checked ? `« ${n} » réactivé` : `« ${n} » suspendu : plus de téléchargement automatique`) : 'Modification refusée', !res.ok);
+    return loadRss();
+  }
   const f = t.closest('[data-filter]');
   if (f) return showTorrents(f.dataset.filter);
   const tn = t.closest('#tree .tn');
@@ -872,6 +1097,13 @@ document.addEventListener('click', async (e) => {
     if (a === 'pc') return $('#pick').click();
     if (a === 'magnet') return openAddDialog({ magnet: true });
     if (a === 'mkdir') return newFolderDialog();
+    if (a === 'subscribe') return subscribeDialog({ dest: state.path });
+    if (a === 'rssnew') return subscribeDialog();
+    if (a === 'rssrefresh') {
+      await Promise.all(rss.feeds.map((x) => post('rss/refreshItem', { itemPath: x.path })));
+      toast('Vérification des flux lancée'); setTimeout(loadRss, 3000); return setTimeout(poll, 3500);
+    }
+    if (a === 'rssenable') { rss.prefs = null; await ensureRssEnabled(); toast('Téléchargement automatique activé'); return loadRss(); }
     if (a === 'addsel') return openAddDialog({ nas: [...state.fileSel] });
     if (a === 'back') { const p = state.hist.pop(); if (p) openFolder(p, { push: false }); return; }
     if (a === 'upd') return openFolder(parent(state.path));
@@ -930,6 +1162,13 @@ document.addEventListener('click', async (e) => {
 document.addEventListener('dblclick', (e) => {
   const pk = e.target.closest('[data-pick]');
   if (pk) { state.fileSel.clear(); openAddDialog({ nas: [pk.dataset.pick] }); }
+});
+document.addEventListener('change', async (e) => {
+  if (!e.target.matches('[data-rssint]')) return;
+  const m = Number(e.target.value);
+  const r = await post('app/setPreferences', { json: JSON.stringify({ rss_refresh_interval: m }) });
+  toast(r.ok ? `Les flux seront vérifiés toutes les ${m} minutes` : 'Modification refusée', !r.ok);
+  loadRss();
 });
 document.addEventListener('input', (e) => {
   const k = e.target.dataset && e.target.dataset.search;
@@ -1007,6 +1246,7 @@ async function poll() {
       if (state.sel.size !== before) renderToolbar(); // un torrent sélectionné a disparu
       if (det.hash) { if (state.torrents.some((x) => x.hash === det.hash)) loadDetails(); else renderDetails(); }
     }
+    if (state.view === 'rss' && Date.now() - rss.last > 10000 && !document.querySelector('.backdrop')) loadRss();
     renderStatus();
   } catch (_) {}
   polling = false;
@@ -1015,6 +1255,7 @@ async function poll() {
 (async function init() {
   renderAll();
   if (store.get('mustChange', false)) passwordDialog(true);
+  loadRss(); // compteur de la barre latérale
   try {
     const r = await api('app/defaultSavePath');
     if (r.ok) state.defaultPath = normalize((await r.text()).trim()) || ROOT;
