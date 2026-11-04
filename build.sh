@@ -80,14 +80,18 @@ mkdir -p "$WORK/pkg/x86_64"
 cp "$BIN" "$WORK/pkg/x86_64/qbittorrent-nox"
 chmod 755 "$WORK/pkg/x86_64/qbittorrent-nox" "$WORK/pkg/shared/qBittorrent.sh"
 
-# Interface classique : copiée à côté de la nôtre (son index.html devient
-# classic.html), avec un bouton pour revenir à l'interface explorateur.
+# Version du paquet affichée dans « À propos » de l'interface explorateur
 UI="$WORK/pkg/shared/webui"
+sed -i "s/__QPKG_VER__/$VERSION/" "$UI/private/index.html"
+
+# Interface classique : copiée à côté de la nôtre (son index.html devient
+# classic.html). qnap-classic.js y ajoute le bouton de retour vers l'explorateur
+# et l'ouverture directe des Options (classic.html#reglages).
 rsync -a --exclude=/index.html "$WEBUI_SRC/src/webui/www/private/" "$UI/private/"
 rsync -a "$WEBUI_SRC/src/webui/www/public/images/" "$UI/public/images/"   # icônes d'onglet
-sed 's#</body>#<a id="qnapExplorerLink" href="./" title="Revenir à l'"'"'interface explorateur" style="position:fixed;top:3px;right:12px;z-index:100000;padding:3px 12px;border-radius:4px;background:\#1866c2;color:\#fff;font:600 13px/1.6 sans-serif;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,.3)">\&\#8644; Interface explorateur</a>\n</body>#' \
+sed 's#</body>#<script src="qnap-classic.js"></script>\n</body>#' \
     "$WEBUI_SRC/src/webui/www/private/index.html" > "$UI/private/classic.html"
-grep -q 'qnapExplorerLink' "$UI/private/classic.html" || die "bouton de retour non inséré dans classic.html"
+grep -q 'qnap-classic.js' "$UI/private/classic.html" || die "script non inséré dans classic.html"
 if [ -n "$LRELEASE" ]; then
     mkdir -p "$UI/translations"
     for ts in "$WEBUI_SRC"/src/webui/www/translations/webui_*.ts; do

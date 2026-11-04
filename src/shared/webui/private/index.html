@@ -159,6 +159,51 @@
   @media (max-width: 900px) {
     .hide-md { display:none; }
   }
+  /* --- Barre de menus et menus déroulants --- */
+  .menubar { display:flex; gap:1px; margin-left:6px; }
+  .menubar > button { background:none; border:0; color:#fff; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:13.5px; white-space:nowrap; }
+  .menubar > button:hover, .menubar > button.open { background:rgba(255,255,255,.18); }
+  .menubar > .mall { display:none; }
+  .menu { position:fixed; z-index:40; min-width:250px; max-height:calc(100vh - 16px); overflow:auto; padding:4px 0; background:#fff; color:var(--text);
+          border:1px solid var(--border); border-radius:6px; box-shadow:0 12px 32px rgba(15,30,50,.22); }
+  .menu button { display:flex; align-items:center; gap:10px; width:100%; padding:7px 16px 7px 10px; border:0; background:none; text-align:left; cursor:pointer; font-size:13.5px; white-space:nowrap; }
+  .menu button:hover:not(:disabled), .menu button:focus-visible { background:var(--hover); outline:none; }
+  .menu button:disabled { color:#a8b2bf; cursor:default; }
+  .menu .mi { width:18px; display:flex; justify-content:center; color:var(--muted); flex:none; }
+  .menu hr { border:0; border-top:1px solid var(--border); margin:4px 0; }
+  .menu .mh { padding:8px 14px 3px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+  /* --- Fenêtres larges : réglages, journal --- */
+  .dlg.wide { max-width:900px; }
+  .settings { display:grid; grid-template-columns:190px minmax(0,1fr); margin:-16px -18px 0; min-height:440px; }
+  .settings nav { border-right:1px solid var(--border); background:#f7f9fc; padding:8px 0; }
+  .settings nav button { display:block; width:100%; text-align:left; border:0; background:none; padding:9px 16px; cursor:pointer; color:var(--text); }
+  .settings nav button:hover { background:#e9eff7; }
+  .settings nav button.on { background:var(--blue-soft); color:var(--blue-dark); font-weight:600; box-shadow:inset 3px 0 0 var(--blue); }
+  .settings section { padding:16px 20px; display:grid; gap:12px; align-content:start; }
+  .settings section[hidden] { display:none; }
+  .settings h3 { margin:0; font-size:15px; }
+  .settings h4 { margin:8px 0 0; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .settings p { margin:0; color:var(--muted); font-size:12.5px; }
+  .srow { display:grid; grid-template-columns:minmax(0,1fr) 190px; gap:12px; align-items:center; }
+  .srow.full { grid-template-columns:1fr; gap:5px; }
+  .srow > label { color:var(--text); font-size:13.5px; display:block; }
+  .srow > label small { display:block; color:var(--muted); font-size:11.5px; }
+  .srow .unit { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12.5px; }
+  .srow .unit .field { min-width:0; }
+  .settings .chk { display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--text); font-size:13.5px; }
+  .settings .off { opacity:.45; }
+  .sched { display:flex; flex-wrap:wrap; gap:6px; align-items:center; color:var(--muted); font-size:12.5px; }
+  .sched .field { width:auto; }
+  .logt td { vertical-align:top; font-size:12.5px; }
+  .logt tr.warn td { color:var(--orange); } .logt tr.crit td { color:var(--red); font-weight:600; }
+  @media (max-width: 760px) {
+    .menubar > button { display:none; }
+    .menubar > .mall { display:block; }
+    .settings { grid-template-columns:1fr; min-height:0; }
+    .settings nav { display:flex; overflow-x:auto; border-right:0; border-bottom:1px solid var(--border); padding:0; }
+    .settings nav button { width:auto; white-space:nowrap; }
+    .srow { grid-template-columns:1fr; gap:5px; }
+  }
   @media (max-width: 760px) {
     .burger { display:block; }
     .speeds, .hide-sm { display:none; }
@@ -183,9 +228,9 @@
     <svg width="26" height="26" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#fff"/><path d="M17 9h6v11h5l-8 9-8-9h5z" fill="#1866c2"/><rect x="11" y="30" width="18" height="2.6" rx="1.3" fill="#1866c2"/></svg>
     <span class="brand-txt">qBittorrent</span>
   </div>
+  <nav class="menubar" id="menubar" aria-label="Menus"></nav>
   <div class="grow"></div>
   <div class="speeds"><span id="spd-dl">↓ —</span><span id="spd-up">↑ —</span></div>
-  <button class="tbtn" id="passwd" title="Changer le mot de passe de l'interface">Mot de passe</button>
   <button class="tbtn hide-sm" id="classic" title="Ouvrir l'interface d'origine de qBittorrent">⇄ Interface classique</button>
   <button class="tbtn" id="logout">Déconnexion</button>
 </header>
@@ -951,18 +996,18 @@ async function setFilePriority(ids, on) {
 }
 
 /* ---------- Fenêtres ---------- */
-function dialog({ title, body, ok = 'OK', okClass = 'primary', onOk, onOpen, forced = false }) {
+function dialog({ title, body, ok = 'OK', okClass = 'primary', onOk = () => {}, onOpen, forced = false, wide = false, cancel = true }) {
   const bd = document.createElement('div');
   bd.className = 'backdrop';
-  bd.innerHTML = `<div class="dlg" role="dialog" aria-modal="true" aria-label="${esc(title)}"><h2>${esc(title)}</h2>
+  bd.innerHTML = `<div class="dlg${wide ? ' wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><h2>${esc(title)}</h2>
     <div class="body">${body}<p class="err" data-err></p></div>
-    <div class="foot">${forced ? '' : '<button class="btn" data-x>Annuler</button>'}<button class="btn ${okClass}" data-ok>${esc(ok)}</button></div></div>`;
+    <div class="foot">${forced || !cancel ? '' : '<button class="btn" data-x>Annuler</button>'}<button class="btn ${okClass}" data-ok>${esc(ok)}</button></div></div>`;
   document.body.appendChild(bd);
   const close = () => { bd.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = (e) => { if (e.key === 'Escape' && !forced) close(); };
   document.addEventListener('keydown', onKey);
   bd.addEventListener('mousedown', (e) => { if (e.target === bd && !forced) close(); });
-  if (!forced) bd.querySelector('[data-x]').onclick = close;
+  if (!forced && cancel) bd.querySelector('[data-x]').onclick = close;
   const okBtn = bd.querySelector('[data-ok]');
   const err = (m) => (bd.querySelector('[data-err]').textContent = m || '');
   okBtn.onclick = async () => {
@@ -976,8 +1021,352 @@ function dialog({ title, body, ok = 'OK', okClass = 'primary', onOk, onOpen, for
   (bd.querySelector('textarea, input:not([type=checkbox])') || okBtn).focus();
 }
 
+/* ---------- Barre de menus (comme l'interface d'origine de qBittorrent) ---------- */
+const PKG_VERSION = '__QPKG_VER__'; // remplacé au build par la version du paquet
+const PROJECT_URL = 'https://github.com/Kill3rbee67/qbittorrent-qnap';
+const selHashes = () => [...state.sel];
+const queueOn = () => !state.prefs || state.prefs.queueing_enabled !== false;
+// Élément de menu : [action, libellé, icône, désactivé, coché]  ·  '-' = séparateur  ·  ['#', titre] = en-tête
+function editItems(context = false) {
+  const s = state.view === 'torrents' && state.sel.size > 0, q = !s || !queueOn(), inList = state.view !== 'torrents';
+  return [
+    ['start', 'Démarrer', I.play(), !s], ['stop', 'Arrêter', I.stop(), !s], ['force', 'Forcer la reprise (hors file d\'attente)', null, !s],
+    '-', ['move', 'Déplacer vers un autre dossier…', I.newdir(), !s], ['recheck', 'Revérifier les fichiers', null, !s], ['reannounce', 'Réannoncer aux trackers', null, !s],
+    '-', ['qtop', 'Haut de la file d\'attente', null, q], ['qup', 'Monter dans la file', null, q], ['qdown', 'Descendre dans la file', null, q], ['qbottom', 'Bas de la file d\'attente', null, q],
+    '-', ['delete', 'Supprimer…', I.trash(), !s],
+    ...(context ? [] : ['-', ['selall', 'Tout sélectionner', null, inList], ['invert', 'Inverser la sélection', null, inList],
+      '-', ['startall', 'Tout démarrer', I.play()], ['stopall', 'Tout arrêter', I.stop()]]),
+  ];
+}
+function menus() {
+  return [
+    ['Fichier', [['addfile', 'Ajouter des fichiers .torrent…', I.upload()], ['addlink', 'Ajouter un lien magnet…', I.magnet(16)],
+      ['subscribe2', 'Nouvel abonnement RSS…', I.rss()], '-', ['logout', 'Déconnexion']]],
+    ['Édition', editItems()],
+    ['Affichage', [['vdl', 'Téléchargements'], ['vrss', 'Abonnements RSS', I.rss()], '-', ['log', 'Journal…'], ['stats', 'Statistiques…']]],
+    ['Outils', [['settings', 'Réglages…'], ['alt', 'Limites de vitesse alternatives', null, false, !!state.altSpeed], '-',
+      ['passwd', 'Mot de passe…'], ['advanced', 'Réglages avancés (interface classique)…']]],
+    ['Aide', [['about', 'À propos…'], ['guide', 'Guide d\'utilisation'], ['issue', 'Signaler un problème']]],
+  ];
+}
+function menuHTML(items) {
+  return items.map((it) => {
+    if (it === '-') return '<hr>';
+    if (it[0] === '#') return `<div class="mh">${esc(it[1])}</div>`;
+    const [act, label, icon, disabled, checked] = it;
+    const mark = checked !== undefined ? (checked ? '✓' : '') : (icon || '');
+    return `<button role="menuitem${checked !== undefined ? 'checkbox' : ''}" data-mact="${act}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}</button>`;
+  }).join('');
+}
+let openMenu = null;
+function closeMenu() { if (!openMenu) return; openMenu.el.remove(); if (openMenu.btn) openMenu.btn.classList.remove('open'); openMenu = null; }
+function showMenu(items, x, y, btn = null) {
+  closeMenu();
+  const m = document.createElement('div');
+  m.className = 'menu'; m.setAttribute('role', 'menu'); m.innerHTML = menuHTML(items);
+  document.body.appendChild(m);
+  const r = m.getBoundingClientRect();
+  m.style.left = Math.max(4, Math.min(x, innerWidth - r.width - 4)) + 'px';
+  m.style.top = Math.max(4, Math.min(y, innerHeight - r.height - 4)) + 'px';
+  openMenu = { el: m, btn };
+  if (btn) btn.classList.add('open');
+}
+async function openTopMenu(btn) {
+  // État des limites de vitesse alternatives, pour la coche du menu Outils
+  try { state.altSpeed = (await api('transfer/speedLimitsMode').then((r) => r.text())).trim() === '1'; } catch (_) {}
+  const all = menus(), i = btn.dataset.menu;
+  const items = i === 'all' ? all.flatMap(([t, it], k) => [...(k ? ['-'] : []), ['#', t], ...it]) : all[i][1];
+  const r = btn.getBoundingClientRect();
+  showMenu(items, r.left, r.bottom + 2, btn);
+}
+function renderMenubar() {
+  $('#menubar').innerHTML = menus().map(([t], i) => `<button data-menu="${i}" aria-haspopup="menu">${t}</button>`).join('')
+    + '<button class="mall" data-menu="all" aria-haspopup="menu">Menu ▾</button>';
+}
+async function runMenu(act) {
+  const hs = selHashes(), n = hs.length, p = (path, extra = {}) => post(path, { hashes: hs.join('|'), ...extra });
+  const done = (msg) => { toast(msg); setTimeout(poll, 400); };
+  switch (act) {
+    case 'addfile': return $('#pick').click();
+    case 'addlink': return openAddDialog({ magnet: true });
+    case 'subscribe2': return subscribeDialog({ dest: state.view === 'folder' ? state.path : state.defaultPath });
+    case 'logout': return $('#logout').click();
+    case 'start': case 'stop': { const ok = await torrentAction(act, hs); return done(ok ? (act === 'start' ? 'Démarré' : 'Arrêté') : 'Action refusée'); }
+    case 'force': await p('torrents/setForceStart', { value: 'true' }); return done(`Reprise forcée pour ${n} torrent${n > 1 ? 's' : ''}`);
+    case 'move': return moveDialog();
+    case 'recheck': await p('torrents/recheck'); return done('Vérification des fichiers lancée');
+    case 'reannounce': await p('torrents/reannounce'); return done('Annonce envoyée aux trackers');
+    case 'qtop': await p('torrents/topPrio'); return done('Placé en haut de la file');
+    case 'qup': await p('torrents/increasePrio'); return done('Monté dans la file');
+    case 'qdown': await p('torrents/decreasePrio'); return done('Descendu dans la file');
+    case 'qbottom': await p('torrents/bottomPrio'); return done('Placé en bas de la file');
+    case 'delete': return deleteDialog();
+    case 'selall': case 'invert': {
+      const list = visibleTorrents();
+      if (act === 'selall') list.forEach((t) => state.sel.add(t.hash)); else list.forEach((t) => (state.sel.has(t.hash) ? state.sel.delete(t.hash) : state.sel.add(t.hash)));
+      renderTorrentRows(); renderToolbar(); return renderStatus();
+    }
+    case 'startall': await post('torrents/start', { hashes: 'all' }); return done('Tous les torrents ont été démarrés');
+    case 'stopall': await post('torrents/stop', { hashes: 'all' }); return done('Tous les torrents ont été arrêtés');
+    case 'vdl': return showTorrents('all');
+    case 'vrss': return showRss();
+    case 'log': return logDialog();
+    case 'stats': return statsDialog();
+    case 'settings': return settingsDialog();
+    case 'alt': {
+      await post('transfer/toggleSpeedLimitsMode', {});
+      const on = (await api('transfer/speedLimitsMode').then((r) => r.text())).trim() === '1';
+      state.altSpeed = on;
+      return toast(on ? 'Limites de vitesse alternatives activées' : 'Limites de vitesse normales rétablies');
+    }
+    case 'passwd': return passwordDialog(false);
+    case 'advanced': location.href = 'classic.html#reglages'; return;
+    case 'about': return aboutDialog();
+    case 'guide': return window.open(PROJECT_URL + '#readme', '_blank', 'noopener');
+    case 'issue': return window.open(PROJECT_URL + '/issues', '_blank', 'noopener');
+  }
+}
+document.addEventListener('click', (e) => {
+  const mb = e.target.closest('[data-menu]');
+  if (mb) { if (openMenu && openMenu.btn === mb) closeMenu(); else openTopMenu(mb); return; }
+  const mi = e.target.closest('.menu [data-mact]');
+  if (mi) { closeMenu(); runMenu(mi.dataset.mact); return; }
+  if (openMenu && !e.target.closest('.menu')) closeMenu();
+});
+// Survol : passe d'un menu à l'autre quand un menu de la barre est ouvert
+document.addEventListener('mouseover', (e) => {
+  const mb = e.target.closest('#menubar [data-menu]');
+  if (mb && openMenu && openMenu.btn && openMenu.btn !== mb && mb.dataset.menu !== 'all') openTopMenu(mb);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+// Clic droit sur un torrent : menu Édition
+document.addEventListener('contextmenu', (e) => {
+  const tr = e.target.closest('#trows tr[data-hash]');
+  if (!tr) return;
+  e.preventDefault();
+  const h = tr.dataset.hash;
+  if (!state.sel.has(h)) { state.sel = new Set([h]); renderTorrentRows(); renderToolbar(); renderStatus(); }
+  showMenu(editItems(true), e.clientX, e.clientY);
+});
+window.addEventListener('resize', closeMenu);
+
+function moveDialog() {
+  const hs = selHashes(), n = hs.length, ts = state.torrents.filter((t) => state.sel.has(t.hash));
+  dialog({
+    title: `Déplacer ${n} torrent${n > 1 ? 's' : ''}`, ok: 'Déplacer',
+    body: `<span>Les fichiers déjà téléchargés sont déplacés vers le nouveau dossier, et la suite du téléchargement s'y fera.</span>
+      <div class="dest">${I.folder(28)}<div style="flex:1;min-width:0;display:grid;gap:4px"><small>Nouveau dossier</small>
+      <input class="field" id="destp" value="${esc(ts.length ? normalize(ts[0].save_path) : state.defaultPath)}" spellcheck="false"></div></div>`,
+    onOk: async (bd, err) => {
+      const d = bd.querySelector('#destp').value.trim().replace(/\/+$/, '');
+      if (!d.startsWith('/')) { err('Indiquez un chemin complet (ex. /share/Download/Films).'); return false; }
+      const r = await post('torrents/setLocation', { hashes: hs.join('|'), location: d });
+      if (!r.ok) { err(r.status === 409 ? 'Impossible d\'écrire dans ce dossier.' : 'Déplacement refusé par qBittorrent.'); return false; }
+      toast(`Déplacement vers ${base(d)} lancé`); setTimeout(poll, 800);
+    },
+  });
+}
+async function logDialog() {
+  const list = await api('log/main?last_known_id=-1').then((r) => r.json());
+  const T = { 1: ['Normal', ''], 2: ['Info', ''], 4: ['Avertissement', 'warn'], 8: ['Critique', 'crit'] };
+  const rows = list.slice(-400).reverse().map((l) => {
+    const [label, cls] = T[l.type] || ['—', ''];
+    return `<tr class="${cls}"><td class="muted" style="white-space:nowrap">${new Date(l.timestamp * 1000).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'medium' })}</td>
+      <td style="white-space:nowrap">${label}</td><td style="overflow-wrap:anywhere">${esc(l.message)}</td></tr>`;
+  }).join('');
+  dialog({ title: 'Journal de qBittorrent', ok: 'Fermer', cancel: false, wide: true,
+    body: `<div style="max-height:62vh;overflow:auto;margin:-16px -18px 0"><table class="logt"><thead><tr><th>Date</th><th>Type</th><th>Message</th></tr></thead><tbody>${rows || '<tr><td colspan="3">Journal vide.</td></tr>'}</tbody></table></div>` });
+}
+async function statsDialog() {
+  const d = await api('sync/maindata?rid=0').then((r) => r.json());
+  const s = d.server_state || {}, n = Object.keys(d.torrents || {}).length;
+  const rows = [
+    ['Reçu depuis l\'installation', fmtSize(s.alltime_dl)], ['Envoyé depuis l\'installation', fmtSize(s.alltime_ul)],
+    ['Ratio de partage global', s.global_ratio || '—'],
+    ['Reçu pendant cette session', fmtSize(s.dl_info_data)], ['Envoyé pendant cette session', fmtSize(s.up_info_data)],
+    ['Données gaspillées (session)', fmtSize(s.total_wasted_session)],
+    ['Torrents', String(n)], ['Connexions aux pairs', String(s.total_peer_connections ?? '—')], ['Nœuds DHT', String(s.dht_nodes ?? '—')],
+    ['Espace libre (dossier par défaut)', fmtSize(s.free_space_on_disk)],
+    ['Attente moyenne du disque', `${s.average_time_queue ?? 0} ms`], ['Tâches disque en attente', String(s.queued_io_jobs ?? 0)],
+  ];
+  dialog({ title: 'Statistiques', ok: 'Fermer', cancel: false,
+    body: `<dl class="kv" style="grid-template-columns:1fr;padding:0">${rows.map(([k, v]) => `<div style="grid-template-columns:220px 1fr"><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` });
+}
+async function aboutDialog() {
+  const [v, b] = await Promise.all([api('app/version').then((r) => r.text()), api('app/buildInfo').then((r) => r.json()).catch(() => ({}))]);
+  dialog({ title: 'À propos', ok: 'Fermer', cancel: false,
+    body: `<div style="display:flex;gap:14px;align-items:center">
+        <svg width="48" height="48" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#1866c2"/><path d="M17 9h6v11h5l-8 9-8-9h5z" fill="#fff"/><rect x="11" y="30" width="18" height="2.6" rx="1.3" fill="#fff"/></svg>
+        <div><strong style="font-size:16px">qBittorrent pour QNAP</strong><br><span class="muted">Paquet ${esc(/^__/.test(PKG_VERSION) ? '(développement)' : PKG_VERSION)} · qBittorrent ${esc(v)}</span></div></div>
+      <dl class="kv" style="grid-template-columns:1fr;padding:0">${[['libtorrent', b.libtorrent], ['Qt', b.qt], ['OpenSSL', b.openssl], ['Boost', b.boost]].filter(([, x]) => x)
+        .map(([k, x]) => `<div style="grid-template-columns:150px 1fr"><dt>${k}</dt><dd>${esc(x)}</dd></div>`).join('')}</dl>
+      <span>Projet communautaire, sans lien avec QNAP ni avec le projet qBittorrent. Code source et guide : <a href="${PROJECT_URL}" target="_blank" rel="noopener" style="color:var(--blue)">${PROJECT_URL.replace('https://', '')}</a>. Licence GPL-2.0-or-later.</span>` });
+}
+
+/* ---------- Réglages (les plus utiles ; le reste reste dans l'interface classique) ---------- */
+// [clé, type, libellé, options]  ·  ['#', texte] = explication  ·  ['=', titre]  ·  ['!action', libellé] = bouton
+const SETTINGS = [
+  ['dl', 'Téléchargements', [
+    ['save_path', 'path', 'Dossier de téléchargement par défaut'],
+    ['temp_path_enabled', 'bool', 'Garder les téléchargements en cours dans un autre dossier'],
+    ['temp_path', 'path', 'Dossier des téléchargements en cours', { dep: 'temp_path_enabled' }],
+    ['add_stopped_enabled', 'bool', 'Ne pas démarrer automatiquement les torrents ajoutés'],
+    ['incomplete_files_ext', 'bool', 'Ajouter l\'extension .!qB aux fichiers pas encore terminés'],
+    ['preallocate_all', 'bool', 'Réserver tout l\'espace disque dès l\'ajout d\'un torrent'],
+    ['torrent_content_layout', 'select', 'Organisation des fichiers', { options: [['Original', 'Comme dans le torrent'], ['Subfolder', 'Toujours dans un sous-dossier'], ['NoSubfolder', 'Jamais de sous-dossier']] }],
+  ]],
+  ['queue', 'File d\'attente', [
+    ['#', 'qBittorrent limite le nombre de torrents actifs en même temps : les autres attendent leur tour (« En file d\'attente »).'],
+    ['queueing_enabled', 'bool', 'Limiter le nombre de torrents actifs'],
+    ['max_active_downloads', 'int', 'Téléchargements simultanés maximum', { dep: 'queueing_enabled', min: -1, hint: '-1 = illimité' }],
+    ['max_active_uploads', 'int', 'Partages simultanés maximum', { dep: 'queueing_enabled', min: -1, hint: '-1 = illimité' }],
+    ['max_active_torrents', 'int', 'Torrents actifs maximum (téléchargements + partages)', { dep: 'queueing_enabled', min: -1, hint: 'au moins égal aux téléchargements simultanés' }],
+    ['dont_count_slow_torrents', 'bool', 'Ne pas compter les torrents lents dans ces limites', { dep: 'queueing_enabled' }],
+  ]],
+  ['speed', 'Vitesse', [
+    ['#', 'Vitesses en Kio/s. 0 = illimité.'],
+    ['dl_limit', 'rate', 'Vitesse de réception maximale'],
+    ['up_limit', 'rate', 'Vitesse d\'envoi maximale'],
+    ['=', 'Limites alternatives'],
+    ['#', 'Limites plus basses, à activer à la main (menu Outils) ou selon un horaire, par exemple en journée.'],
+    ['alt_dl_limit', 'rate', 'Réception'],
+    ['alt_up_limit', 'rate', 'Envoi'],
+    ['scheduler_enabled', 'bool', 'Activer les limites alternatives selon un horaire'],
+    ['schedule', 'schedule', 'Horaire', { dep: 'scheduler_enabled' }],
+  ]],
+  ['conn', 'Connexion', [
+    ['listen_port', 'int', 'Port BitTorrent', { min: 1024, max: 65535, hint: 'à rediriger vers le NAS sur votre box' }],
+    ['upnp', 'bool', 'Ouvrir le port automatiquement sur la box (UPnP / NAT-PMP)'],
+    ['max_connec', 'int', 'Connexions maximum', { min: -1, hint: '-1 = illimité' }],
+    ['max_connec_per_torrent', 'int', 'Connexions maximum par torrent', { min: -1, hint: '-1 = illimité' }],
+    ['max_uploads', 'int', 'Envois simultanés maximum', { min: -1, hint: '-1 = illimité' }],
+    ['max_uploads_per_torrent', 'int', 'Envois simultanés par torrent', { min: -1, hint: '-1 = illimité' }],
+  ]],
+  ['bt', 'BitTorrent', [
+    ['dht', 'bool', 'Réseau DHT (trouver des sources sans tracker)'],
+    ['pex', 'bool', 'Échange de pairs (PeX)'],
+    ['lsd', 'bool', 'Découverte de pairs sur le réseau local'],
+    ['encryption', 'select', 'Chiffrement des connexions', { options: [[0, 'Préférer le chiffrement'], [1, 'Exiger le chiffrement'], [2, 'Désactiver le chiffrement']] }],
+    ['anonymous_mode', 'bool', 'Mode anonyme'],
+  ]],
+  ['seed', 'Partage', [
+    ['#', 'Un téléchargement terminé continue d\'être partagé avec les autres. Vous pouvez limiter ce partage.'],
+    ['max_ratio_enabled', 'bool', 'Arrêter le partage au-delà d\'un ratio'],
+    ['max_ratio', 'float', 'Ratio maximum', { dep: 'max_ratio_enabled', min: 0, hint: '1 = autant envoyé que reçu' }],
+    ['max_seeding_time_enabled', 'bool', 'Arrêter le partage après une durée'],
+    ['max_seeding_time', 'int', 'Durée de partage maximum (minutes)', { dep: 'max_seeding_time_enabled', min: 0 }],
+    ['max_ratio_act', 'select', 'Quand la limite est atteinte', { options: [[0, 'Arrêter le torrent'], [1, 'Retirer le torrent (garder les fichiers)'], [3, 'Retirer le torrent et supprimer ses fichiers'], [2, 'Passer en super-partage']] }],
+  ]],
+  ['rss', 'RSS', [
+    ['rss_processing_enabled', 'bool', 'Récupérer les flux RSS'],
+    ['rss_auto_downloading_enabled', 'bool', 'Télécharger automatiquement selon les abonnements'],
+    ['rss_refresh_interval', 'int', 'Vérifier les flux toutes les (minutes)', { min: 1 }],
+    ['rss_max_articles_per_feed', 'int', 'Éléments conservés par flux', { min: 1 }],
+  ]],
+  ['ui', 'Interface', [
+    ['#', 'L\'interface web est sur le port 8085, fixé par le paquet QNAP.'],
+    ['!passwd', 'Changer le mot de passe…'],
+    ['!advanced', 'Tous les autres réglages (interface classique)…'],
+  ]],
+];
+const DAYS = [[0, 'Tous les jours'], [1, 'En semaine'], [2, 'Le week-end'], [3, 'Lundi'], [4, 'Mardi'], [5, 'Mercredi'], [6, 'Jeudi'], [7, 'Vendredi'], [8, 'Samedi'], [9, 'Dimanche']];
+const pad2 = (n) => String(n).padStart(2, '0');
+function settingHTML(f, p) {
+  const [k, type, label, o = {}] = f;
+  if (k === '#') return `<p>${esc(type)}</p>`;
+  if (k === '=') return `<h4>${esc(type)}</h4>`;
+  if (k[0] === '!') return `<div><button type="button" class="btn" data-sact="${k.slice(1)}">${esc(type)}</button></div>`;
+  const dep = o.dep ? ` data-dep="${o.dep}"` : '', hint = o.hint ? `<small>${esc(o.hint)}</small>` : '';
+  if (type === 'bool') return `<label class="chk"${dep}><input type="checkbox" data-k="${k}" ${p[k] ? 'checked' : ''}> ${esc(label)}</label>`;
+  if (type === 'path') return `<div class="srow full"${dep}><label for="s-${k}">${esc(label)}</label><input class="field" id="s-${k}" data-k="${k}" value="${esc(normalize(p[k] || ''))}" spellcheck="false"></div>`;
+  if (type === 'select') return `<div class="srow"${dep}><label for="s-${k}">${esc(label)}${hint}</label><select class="field" id="s-${k}" data-k="${k}">${o.options.map(([v, l]) => `<option value="${v}" ${String(p[k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
+  if (type === 'schedule') return `<div class="srow"${dep}><label>${esc(label)}</label><div class="sched" data-k="schedule">
+      de <input class="field" type="time" data-part="from" value="${pad2(p.schedule_from_hour)}:${pad2(p.schedule_from_min)}">
+      à <input class="field" type="time" data-part="to" value="${pad2(p.schedule_to_hour)}:${pad2(p.schedule_to_min)}">
+      <select class="field" data-part="days">${DAYS.map(([v, l]) => `<option value="${v}" ${p.scheduler_days === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>`;
+  const val = type === 'rate' ? Math.round((p[k] || 0) / 1024) : p[k];
+  const unit = type === 'rate' ? 'Kio/s' : '';
+  return `<div class="srow"${dep}><label for="s-${k}">${esc(label)}${hint}</label><div class="unit"><input class="field" id="s-${k}" data-k="${k}" type="number"
+    ${type === 'float' ? 'step="0.1"' : 'step="1"'} ${o.min !== undefined ? `min="${o.min}"` : ''} ${o.max !== undefined ? `max="${o.max}"` : ''} value="${esc(val ?? '')}">${unit}</div></div>`;
+}
+async function settingsDialog(tab = 'dl') {
+  const p = await api('app/preferences').then((r) => r.json());
+  state.prefs = p;
+  const types = Object.fromEntries(SETTINGS.flatMap(([, , f]) => f).filter((f) => !/^[#=!]/.test(f[0])).map((f) => [f[0], f]));
+  dialog({
+    title: 'Réglages', ok: 'Enregistrer', wide: true,
+    body: `<div class="settings"><nav>${SETTINGS.map(([id, l]) => `<button type="button" data-stab="${id}">${l}</button>`).join('')}</nav>
+      <div>${SETTINGS.map(([id, l, f]) => `<section data-spane="${id}"><h3>${l}</h3>${f.map((x) => settingHTML(x, p)).join('')}</section>`).join('')}</div></div>`,
+    onOpen: (bd) => {
+      const show = (id) => {
+        bd.querySelectorAll('[data-stab]').forEach((b) => b.classList.toggle('on', b.dataset.stab === id));
+        bd.querySelectorAll('[data-spane]').forEach((s) => (s.hidden = s.dataset.spane !== id));
+      };
+      const deps = () => bd.querySelectorAll('[data-dep]').forEach((el) => {
+        const on = bd.querySelector(`[data-k="${el.dataset.dep}"]`).checked;
+        el.classList.toggle('off', !on);
+        el.querySelectorAll('input, select').forEach((i) => (i.disabled = !on));
+      });
+      bd.addEventListener('click', (e) => {
+        const t = e.target.closest('[data-stab]'); if (t) show(t.dataset.stab);
+        const a = e.target.closest('[data-sact]'); if (a) { if (a.dataset.sact === 'passwd') passwordDialog(false); else location.href = 'classic.html#reglages'; }
+      });
+      bd.addEventListener('change', deps);
+      show(tab); deps();
+      bd.querySelector('[data-ok]').focus();
+    },
+    onOk: async (bd, err) => {
+      const diff = {};
+      for (const el of bd.querySelectorAll('[data-k]')) {
+        const k = el.dataset.k;
+        if (k === 'schedule') {
+          const [fh, fm] = el.querySelector('[data-part=from]').value.split(':').map(Number);
+          const [th, tm] = el.querySelector('[data-part=to]').value.split(':').map(Number);
+          const v = { schedule_from_hour: fh, schedule_from_min: fm, schedule_to_hour: th, schedule_to_min: tm, scheduler_days: Number(el.querySelector('[data-part=days]').value) };
+          for (const [kk, vv] of Object.entries(v)) if (!Number.isNaN(vv) && vv !== p[kk]) diff[kk] = vv;
+          continue;
+        }
+        const [, type, label, o = {}] = types[k];
+        let v;
+        if (type === 'bool') v = el.checked;
+        else if (type === 'select') v = typeof p[k] === 'number' ? Number(el.value) : el.value;
+        else if (type === 'path') {
+          v = el.value.trim().replace(/\/+$/, '');
+          if (el.disabled) continue;
+          if (!v.startsWith('/')) { err(`« ${label} » : indiquez un chemin complet (ex. /share/Download).`); show(bd, k); return false; }
+          if (normalize(v) === normalize(p[k] || '')) continue;
+        } else {
+          if (el.disabled) continue;
+          const raw = el.value.trim() === '' ? (type === 'rate' ? '0' : '') : el.value;
+          const num = type === 'float' ? parseFloat(raw) : parseInt(raw, 10);
+          if (Number.isNaN(num) || (o.min !== undefined && num < o.min) || (o.max !== undefined && num > o.max)) {
+            err(`« ${label} » : valeur invalide${o.min !== undefined ? ` (minimum ${o.min}${o.max !== undefined ? `, maximum ${o.max}` : ''})` : ''}.`); show(bd, k); return false;
+          }
+          v = type === 'rate' ? num * 1024 : num;
+        }
+        if (v !== p[k]) diff[k] = v;
+      }
+      if (!Object.keys(diff).length) return;
+      const r = await post('app/setPreferences', { json: JSON.stringify(diff) });
+      if (!r.ok) { err('qBittorrent a refusé ces réglages.'); return false; }
+      state.prefs = { ...p, ...diff };
+      if (diff.save_path) state.defaultPath = normalize(diff.save_path);
+      const nb = Object.keys(diff).length;
+      toast(`Réglages enregistrés (${nb} modification${nb > 1 ? 's' : ''})`);
+      if (state.view === 'rss') loadRss();
+      setTimeout(poll, 500);
+    },
+  });
+  // Affiche l'onglet contenant un champ en erreur
+  function show(bd, key) {
+    const sec = bd.querySelector(`[data-k="${key}"]`).closest('[data-spane]');
+    bd.querySelector(`[data-stab="${sec.dataset.spane}"]`).click();
+    bd.querySelector(`[data-k="${key}"]`).focus();
+  }
+}
+
 function openAddDialog({ files = [], nas = [], magnet = false }) {
-  const dest = state.path;
+  const dest = state.view === 'folder' && state.path ? state.path : state.defaultPath;
   const items = [
     ...files.map((f) => `<li>${I.torrent(18)}<span>${esc(f.name)}</span><small>depuis le PC</small></li>`),
     ...nas.map((p) => `<li>${I.torrent(18)}<span>${esc(base(p))}</span><small>sur le NAS</small></li>`),
@@ -1223,7 +1612,6 @@ const passwordDialog = (forced = false) => dialog({
     toast('Mot de passe enregistré. Il restera valable après les redémarrages.');
   },
 });
-$('#passwd').onclick = () => passwordDialog(false);
 // L'interface d'origine de qBittorrent est servie à côté de celle-ci (classic.html),
 // avec un bouton « Interface explorateur » pour revenir : rien à changer dans les options.
 $('#classic').onclick = () => { location.href = 'classic.html'; };
@@ -1254,8 +1642,10 @@ async function poll() {
 
 (async function init() {
   renderAll();
+  renderMenubar();
   if (store.get('mustChange', false)) passwordDialog(true);
   loadRss(); // compteur de la barre latérale
+  api('app/preferences').then((r) => r.json()).then((p) => { state.prefs = p; }).catch(() => {});
   try {
     const r = await api('app/defaultSavePath');
     if (r.ok) state.defaultPath = normalize((await r.text()).trim()) || ROOT;
