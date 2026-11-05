@@ -3,6 +3,11 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<script>
+// Accès par le proxy de QTS sans « / » final (…/qbittorrent) : les adresses relatives
+// de l'interface (api/v2/…) partiraient alors à la racine de QTS
+if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname + '/' + location.search + location.hash);
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>qBittorrent – Connexion</title>
 <style>
@@ -46,7 +51,7 @@
       <details class="first"><summary>Première connexion ?</summary>
         Utilisateur <b>admin</b>, mot de passe <b>adminadmin</b>. Vous devrez ensuite choisir votre propre mot de passe.</details>
     </form>
-    <p class="warn" id="warn">Sécurité : le mot de passe initial <b>adminadmin</b> est public. Changez-le dès la première connexion et n'ouvrez pas cette page sur Internet (utilisez plutôt un VPN).</p>
+    <p class="warn" id="warn">Sécurité : le mot de passe initial <b>adminadmin</b> est public. Changez-le dès la première connexion. Pour un accès à distance, passez par myQNAPcloud Link ou un VPN plutôt que d'ouvrir le port 8085 sur Internet.</p>
   </div>
 <script>
 // Accès depuis Internet (adresse non locale) : avertissement renforcé
@@ -56,9 +61,12 @@
   if (local) return;
   const w = document.getElementById('warn');
   w.className = 'warn bad';
-  w.innerHTML = 'Attention : vous accédez à qBittorrent <b>depuis Internet</b>' + (location.protocol === 'http:' ? ', <b>sans chiffrement</b>' : '')
-    + '. Le mot de passe initial adminadmin est public : si ce n\'est pas déjà fait, changez-le immédiatement, et préférez un accès par VPN.'
-    + (location.protocol === 'http:' ? ' Activez au moins HTTPS (Outils › Réglages › Interface).' : '');
+  const http = location.protocol === 'http:';
+  const viaQts = location.pathname.replace(/[^/]*$/, '') !== '/';
+  w.innerHTML = 'Attention : vous accédez à qBittorrent <b>depuis Internet</b>' + (http ? ', <b>sans chiffrement</b>' : '')
+    + '. Le mot de passe initial adminadmin est public : si ce n\'est pas déjà fait, remplacez-le immédiatement par un mot de passe long et unique.'
+    + (http ? (viaQts ? ' Utilisez plutôt l\'adresse en https://.'
+      : ' Passez plutôt par myQNAPcloud Link (adresse https://…/qbittorrent/) ou activez HTTPS (Outils › Réglages › Interface).') : '');
 })();
 document.getElementById('f').addEventListener('submit', async (e) => {
   e.preventDefault();

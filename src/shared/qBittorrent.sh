@@ -109,7 +109,15 @@ prepare_ssl() {
 #    sur une installation existante) ; si l'utilisateur revient ensuite à
 #    l'interface classique, ce choix est respecté ;
 #  - chemins du certificat HTTPS, s'ils ne sont pas déjà définis ;
-#  - mot de passe initial, uniquement si aucun mot de passe n'est défini.
+#  - mot de passe initial, uniquement si aucun mot de passe n'est défini ;
+#  - accès par le proxy de QTS (http(s)://NAS:8080/qbittorrent/, myQNAPcloud
+#    Link) : le proxy local (127.0.0.1) est déclaré de confiance pour que
+#    qBittorrent voie la vraie adresse du client et l'adresse tapée dans le
+#    navigateur (protection CSRF) ; la vérification de l'en-tête Host, qui
+#    refuserait le port 8080 du proxy, est désactivée une première fois ;
+#  - authentification obligatoire pour les connexions locales (127.0.0.1),
+#    forcée à chaque démarrage : à travers le proxy, tout le monde, y compris
+#    depuis Internet, arrive de 127.0.0.1.
 ensure_webui() {
     [ -d "$WEBUI_DIR" ] || return 0
     SSL_OK=0; [ -s "$SSL_DIR/cert.pem" ] && [ -s "$SSL_DIR/key.pem" ] && SSL_OK=1
@@ -119,6 +127,10 @@ ensure_webui() {
             if (sslok && !hascert) { print "HTTPS\\CertificatePath=" ssl "/cert.pem"; hascert = 1 }
             if (sslok && !haskey) { print "HTTPS\\KeyPath=" ssl "/key.pem"; haskey = 1 }
             if (!haspw) { print "Password_PBKDF2=\"" pw "\""; haspw = 1 }
+            if (!hasrp) { print "ReverseProxySupportEnabled=true"; hasrp = 1 }
+            if (!hasrpl) { print "TrustedReverseProxiesList=\"127.0.0.1;::1\""; hasrpl = 1 }
+            if (!hashv) { print "HostHeaderValidation=false"; hashv = 1 }
+            if (!haslh) { print "LocalHostAuth=true"; haslh = 1 }
         }
         /^\[/ {
             if (insec) add()
@@ -134,6 +146,11 @@ ensure_webui() {
         # Lignes vides laissées par qBittorrent : supprimées puis réécrites
         insec && /^HTTPS\\(CertificatePath|KeyPath)=$/ { next }
         insec && /^Password_PBKDF2=/ { haspw = 1 }
+        insec && /^ReverseProxySupportEnabled=/ { hasrp = 1 }
+        insec && /^TrustedReverseProxiesList=/ { hasrpl = 1 }
+        insec && /^HostHeaderValidation=/ { hashv = 1 }
+        # Ancien format ([Preferences] WebUI\LocalHostAuth) compris
+        /^(WebUI\\)?LocalHostAuth=/ { sub(/=.*/, "=true"); if (insec) haslh = 1 }
         { print }
         END {
             if (insec) add()

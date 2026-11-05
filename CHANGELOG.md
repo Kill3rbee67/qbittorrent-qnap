@@ -2,6 +2,12 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.3.0
+- **Accès à distance par myQNAPcloud Link** : l'interface est aussi servie par le serveur web de QTS à l'adresse `/qbittorrent/` (proxy QTS), donc joignable depuis myqnapcloud.com sans ouvrir de port. L'icône du bureau QTS ne renvoie plus « Ce service ne prend pas en charge myQNAPcloud Link ».
+- Réglages appliqués au démarrage pour cet accès : proxy local déclaré de confiance (vraie adresse du client, protection CSRF), vérification de l'en-tête Host désactivée, authentification obligatoire pour les connexions locales (option « Ignorer l'authentification pour localhost » bloquée dans l'interface classique).
+- Outils › Réglages › Interface : adresses d'accès indiquées ; le HTTPS de qBittorrent, incompatible avec l'accès par QTS, ne se modifie plus depuis `/qbittorrent/`.
+- Page de connexion : conseils adaptés à l'accès par myQNAPcloud Link.
+
 ## 5.3.2.0
 Sécurité
 - Page de connexion : avertissement explicite (le mot de passe initial `adminadmin` est public, à changer aussitôt ; pas d'exposition sur Internet), renforcé quand la page est ouverte depuis une adresse Internet.

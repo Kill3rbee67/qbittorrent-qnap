@@ -1,6 +1,6 @@
 # qBittorrent pour QNAP
 
-> **English** — A ready-to-install **QPKG** that adds qBittorrent 5.3 to QNAP NAS models (x86_64; ARM 64-bit build available, experimental), with a French web UI laid out like a file browser: browse your NAS shares and add `.torrent` files or magnet links straight into the folder you are viewing, subscribe to RSS feeds per folder, get e-mail or webhook notifications. Install from App Center (enable unsigned apps first, then either add the app repository `https://raw.githubusercontent.com/Kill3rbee67/qbittorrent-qnap/main/repository.xml` or install the `.qpkg` from the [releases](../../releases/latest) manually), open `http://NAS-IP:8085` and log in with `admin` / `adminadmin` — **this default password is public: change it immediately** (you will be asked to) and never expose port 8085 to the Internet. Contributions welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+> **English** — A ready-to-install **QPKG** that adds qBittorrent 5.3 to QNAP NAS models (x86_64; ARM 64-bit build available, experimental), with a French web UI laid out like a file browser: browse your NAS shares and add `.torrent` files or magnet links straight into the folder you are viewing, subscribe to RSS feeds per folder, get e-mail or webhook notifications. Install from App Center (enable unsigned apps first, then either add the app repository `https://raw.githubusercontent.com/Kill3rbee67/qbittorrent-qnap/main/repository.xml` or install the `.qpkg` from the [releases](../../releases/latest) manually), open `http://NAS-IP:8085` (or `/qbittorrent/` on the QTS address, which also works remotely through myQNAPcloud Link) and log in with `admin` / `adminadmin` — **this default password is public: change it immediately** (you will be asked to) and never expose port 8085 to the Internet. Contributions welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorrent.org/) à un NAS QNAP, avec une interface web en français organisée comme un explorateur de fichiers. Pensé comme une alternative à Download Station : pas de Docker, pas de ligne de commande, tout se fait depuis l'App Center et le navigateur.
 
@@ -19,6 +19,7 @@ Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorr
 - **Abonnements RSS** : depuis le dossier d'une série, « S'abonner (RSS) » avec l'adresse d'une recherche, et chaque nouvel épisode publié est téléchargé automatiquement dans ce dossier.
 - **Notifications** par e-mail (téléchargement terminé) ou par webhook (Discord, Slack, Mattermost, ntfy, Home Assistant…) à chaque nouveau torrent ou téléchargement terminé.
 - **Suivi des téléchargements** : progression, vitesses, temps restant, détail par fichier, trackers et pairs, filtres (en cours, terminés, arrêtés, en erreur).
+- **Accès à distance par myQNAPcloud Link** : l'interface est aussi servie par QTS à l'adresse `/qbittorrent/`, sans ouvrir de port sur la box.
 - **HTTPS en option**, avec le certificat du NAS.
 - L'**interface d'origine** de qBittorrent (en français) est incluse : bouton « ⇄ Interface classique » pour y aller, bouton « ⇄ Interface explorateur » pour revenir.
 
@@ -96,6 +97,24 @@ Les **fichiers téléchargés** dans les dossiers partagés (Download, etc.) **n
 
 Pour réinstaller plus tard en gardant vos réglages, sauvegardez `profile/` avant de désinstaller (commande ci-dessus), puis remettez-le en place après la réinstallation.
 
+## Accès à distance (myQNAPcloud Link)
+
+L'interface est aussi servie par le serveur web de QTS, à l'adresse **`/qbittorrent/`** :
+
+| Depuis | Adresse |
+|---|---|
+| Le réseau local | `http://IP-DU-NAS:8085` (accès direct) ou `http://IP-DU-NAS:8080/qbittorrent/` (via QTS ; `https://IP-DU-NAS/qbittorrent/` si HTTPS est activé dans QTS) |
+| Internet, avec myQNAPcloud Link | connectez-vous à votre NAS sur [myqnapcloud.com](https://www.myqnapcloud.com) puis cliquez sur l'icône **qBittorrent** du bureau QTS, ou, dans la barre d'adresse, remplacez `/cgi-bin/…` par `/qbittorrent/` (ex. `https://a4.myqnapcloud.com/qbittorrent/`) |
+
+Rien à ouvrir sur la box : myQNAPcloud Link relaie la connexion en HTTPS. Les mêmes identifiants que sur le réseau local sont demandés.
+
+Avant d'activer l'accès à distance :
+- **changez le mot de passe initial** `adminadmin` pour un mot de passe long et unique : la page devient accessible depuis Internet à toute personne qui connaît l'adresse de votre NAS ;
+- ne cochez pas « Chiffrer l'accès direct par le port 8085 (HTTPS) » dans les réglages de qBittorrent : tant qu'il est actif, l'accès par `/qbittorrent/` ne fonctionne plus (le chiffrement est alors assuré par QTS et myQNAPcloud) ;
+- l'option « Ignorer l'authentification pour les clients sur localhost » de l'interface classique est bloquée par le paquet : à travers QTS, toutes les connexions, y compris depuis Internet, arrivent de l'adresse locale du NAS.
+
+Pour que cela fonctionne, le paquet déclare `/qbittorrent` auprès du proxy de QTS et règle qBittorrent en conséquence au démarrage : proxy local (127.0.0.1) déclaré de confiance, vérification de l'en-tête « Host » désactivée, authentification obligatoire pour les connexions locales.
+
 ## Télécharger automatiquement une série (RSS)
 
 1. Sur votre site de torrents, faites la recherche qui correspond aux sorties voulues (par exemple `Ma Série 1080p`) et copiez l'adresse de son **flux RSS**. Sur certains sites, l'adresse de la page de résultats suffit : elle est convertie automatiquement.
@@ -123,7 +142,7 @@ Le webhook utilise le « programme externe » de qBittorrent : s'il était déj�
 
 | | |
 |---|---|
-| Interface web | port **8085** (le 8080 est utilisé par QTS), en HTTP ou en **HTTPS** (Outils › Réglages › Interface) |
+| Interface web | port **8085** (le 8080 est utilisé par QTS), en HTTP ou en **HTTPS** (Outils › Réglages › Interface) ; aussi `/qbittorrent/` sur l'adresse de QTS et par myQNAPcloud Link |
 | Port BitTorrent | **51881** : pour de bons débits, redirigez-le vers le NAS sur votre box. Si ce port est déjà pris au démarrage, un port libre proche est choisi automatiquement (voir le journal). |
 | Dossier de téléchargement par défaut | dossier partagé **Download** de QTS |
 | Journal | `/share/CACHEDEV1_DATA/.qpkg/qBittorrent/qbittorrent.log` (le volume peut varier) |
@@ -156,6 +175,14 @@ sed -i '/^Password_PBKDF2=/d' /share/CACHEDEV1_DATA/.qpkg/qBittorrent/profile/qB
 /etc/init.d/qBittorrent.sh start
 ```
 
+**myQNAPcloud Link : « Ce service ne prend pas en charge myQNAPcloud Link », ou page d'erreur sur `/qbittorrent/`**
+Le message apparaît avec les versions antérieures à 5.3.3.0 : mettez à jour. Si `/qbittorrent/` affiche ensuite une erreur, vérifiez que l'accès direct `http://IP-DU-NAS:8085` fonctionne, que HTTPS n'est pas activé dans les réglages de qBittorrent, puis redémarrez qBittorrent depuis l'App Center. Si le problème persiste, ouvrez un ticket avec le résultat de ces commandes (en SSH, en root) :
+```sh
+getcfg qBittorrent Use_Proxy -f /etc/config/qpkg.conf; getcfg qBittorrent Proxy_Path -f /etc/config/qpkg.conf
+grep -rn "qbittorrent" /etc/apache-sys-proxy*.conf /etc/config/apache/ 2>/dev/null | head
+curl -sI http://127.0.0.1:8080/qbittorrent/ | head -n 1
+```
+
 **Plus d'accès après activation de HTTPS** (certificat refusé par le navigateur, par exemple)
 En SSH, en root, désactivez HTTPS :
 ```sh
@@ -167,9 +194,9 @@ sed -i 's/^HTTPS\\Enabled=true/HTTPS\\Enabled=false/' /share/CACHEDEV1_DATA/.qpk
 ## Sécurité
 
 - **Mot de passe initial public.** `admin` / `adminadmin` est documenté ici à dessein, pour que l'installation reste simple sans SSH. Le changement imposé à la première connexion est une aide, pas une protection : si quelqu'un se connecte avant vous, il peut choisir le mot de passe à votre place. Installez, connectez-vous et changez le mot de passe dans la foulée.
-- **Pas d'exposition sur Internet.** N'ouvrez pas le port 8085 sur votre box ni via myQNAPcloud. Pour un accès à distance, passez par un VPN (QVPN, WireGuard, Tailscale…).
+- **Accès à distance.** N'ouvrez pas le port 8085 sur votre box (ni par la redirection automatique de ports de myQNAPcloud). Pour un accès à distance, utilisez myQNAPcloud Link (adresse `/qbittorrent/`, voir plus haut) ou un VPN (QVPN, WireGuard, Tailscale…). Avec myQNAPcloud Link, la page de connexion est joignable depuis Internet : seul le mot de passe protège alors l'accès, d'où l'importance d'un mot de passe long et unique (après plusieurs échecs, qBittorrent bloque temporairement l'adresse concernée). Le VPN reste l'option la plus sûre.
 - **HTTPS en option** : Outils › Réglages › Interface › « Chiffrer l'interface web (HTTPS) ». Le paquet reprend à chaque démarrage le certificat du NAS (QTS › Sécurité › Certificat, Let's Encrypt compris) ; à défaut, il crée un certificat auto-signé, que le navigateur vous demandera d'accepter une fois. Sans HTTPS, le mot de passe circule en clair sur le réseau local.
-- **Le service tourne en root**, comme la plupart des paquets QPKG. Concrètement, une faille dans qBittorrent ou dans son interface web, ou un mot de passe d'interface trop faible, donnerait un accès complet au NAS (tous les dossiers partagés, la configuration du système), et les fichiers téléchargés appartiennent à root. Faire tourner qBittorrent sous un utilisateur dédié demanderait de créer un compte système et de lui donner des droits sur les dossiers partagés, ce qui touche à la gestion des comptes de QTS et n'est pas proposé par ce paquet. D'où l'importance des deux points précédents : mot de passe fort, aucune exposition sur Internet.
+- **Le service tourne en root**, comme la plupart des paquets QPKG. Concrètement, une faille dans qBittorrent ou dans son interface web, ou un mot de passe d'interface trop faible, donnerait un accès complet au NAS (tous les dossiers partagés, la configuration du système), et les fichiers téléchargés appartiennent à root. Faire tourner qBittorrent sous un utilisateur dédié demanderait de créer un compte système et de lui donner des droits sur les dossiers partagés, ce qui touche à la gestion des comptes de QTS et n'est pas proposé par ce paquet. D'où l'importance des points précédents : mot de passe fort, port 8085 jamais ouvert sur Internet.
 - **Binaire vérifié** : le binaire qBittorrent provient du projet userdocs et son empreinte SHA-256 est vérifiée à chaque build, en CI comme en local ; chaque release publie un fichier `PROVENANCE.txt` (versions et empreintes de tout ce qui est embarqué).
 
 ## Construire le paquet, contribuer

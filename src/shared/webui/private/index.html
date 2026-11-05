@@ -3,6 +3,11 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<script>
+// Accès par le proxy de QTS sans « / » final (…/qbittorrent) : les adresses relatives
+// de l'interface (api/v2/…) partiraient alors à la racine de QTS
+if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname + '/' + location.search + location.hash);
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>qBittorrent</title>
 <style>
@@ -1279,14 +1284,19 @@ const SETTINGS = [
     ['webhook', 'webhook', 'Adresse du webhook'],
   ]],
   ['ui', 'Interface', [
-    ['#', 'L\'interface web est sur le port 8085, fixé par le paquet QNAP.'],
-    ['use_https', 'bool', 'Chiffrer l\'interface web (HTTPS) avec le certificat du NAS'],
-    ['#', 'Après activation, l\'adresse devient https://IP-DU-NAS:8085. Si le certificat du NAS est auto-signé, le navigateur affiche un avertissement à accepter une fois.'],
+    ['=', 'Adresses de l\'interface'],
+    ['#', 'Sur le réseau local : http://IP-DU-NAS:8085 (port fixé par le paquet QNAP), ou http://IP-DU-NAS:8080/qbittorrent/ par le serveur web de QTS.'],
+    ['#', 'À distance avec myQNAPcloud Link : connectez-vous à votre NAS sur myqnapcloud.com puis ouvrez l\'icône qBittorrent, ou, dans la barre d\'adresse, remplacez /cgi-bin/… par /qbittorrent/.'],
+    ['=', 'HTTPS sur le port 8085'],
+    ['use_https', 'bool', 'Chiffrer l\'accès direct par le port 8085 avec le certificat du NAS'],
+    ['#', 'Après activation, l\'adresse devient https://IP-DU-NAS:8085 (avertissement du navigateur à accepter une fois si le certificat est auto-signé). Attention : tant que HTTPS est activé ici, l\'accès par QTS et myQNAPcloud Link (/qbittorrent/) ne fonctionne plus. Pour un accès chiffré, préférez https://IP-DU-NAS/qbittorrent/ (HTTPS de QTS).'],
     ['!passwd', 'Changer le mot de passe…'],
     ['!advanced', 'Tous les autres réglages (interface classique)…'],
   ]],
 ];
 // Notification web : programme externe de qBittorrent pointant vers notify.sh du paquet
+// Accès par le proxy de QTS (…/qbittorrent/, myQNAPcloud Link) plutôt que par le port 8085
+const VIA_QTS = location.pathname.replace(/[^/]*$/, '') !== '/';
 const isOurHook = (prog) => /\/notify\.sh" "/.test(prog || '');
 function webhookState(p) {
   const m = (prog) => (/\/notify\.sh" "([^"]+)"/.exec(prog || '') || [])[1] || '';
@@ -1354,8 +1364,14 @@ async function settingsDialog(tab = 'dl') {
         const a = e.target.closest('[data-sact]'); if (a) { if (a.dataset.sact === 'passwd') passwordDialog(false); else location.href = 'classic.html#reglages'; }
       });
       bd.addEventListener('change', deps);
+      // HTTPS : sans objet quand on passe par le proxy de QTS (il couperait cet accès)
+      if (VIA_QTS && !p.use_https) {
+        const h = bd.querySelector('[data-k=use_https]');
+        h.disabled = true;
+        h.closest('label').insertAdjacentHTML('afterend', '<p>Vous passez actuellement par QTS (/qbittorrent/) : ce réglage n\'est modifiable que depuis l\'adresse directe http://IP-DU-NAS:8085.</p>');
+      }
       // HTTPS : impossible sans certificat (préparé par le paquet au démarrage)
-      if (!p.web_ui_https_cert_path || !p.web_ui_https_key_path) {
+      else if (!p.web_ui_https_cert_path || !p.web_ui_https_key_path) {
         const h = bd.querySelector('[data-k=use_https]');
         h.disabled = true;
         h.closest('label').insertAdjacentHTML('afterend', '<p>Aucun certificat disponible : redémarrez qBittorrent depuis l\'App Center pour qu\'il prépare celui du NAS.</p>');
