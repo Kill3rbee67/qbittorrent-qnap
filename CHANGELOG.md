@@ -2,6 +2,9 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.3.2
+- Mise à jour depuis la 5.3.3.0 : QTS ajoutait la nouvelle règle de proxy `/qbittorrent/` sans retirer l'ancienne (`/qbittorrent`), qui restait prioritaire, d'où l'erreur « Type de fichier inacceptable » persistante. Le paquet retire l'ancienne règle de `/etc/app_proxy.conf` au démarrage et recharge le proxy de QTS.
+
 ## 5.3.3.1
 - Correction de l'accès par QTS et myQNAPcloud Link : « Type de fichier inacceptable, seul un fichier normal est autorisé » sur `/qbittorrent/`. QTS génère `ProxyPass "/qbittorrent" "http://127.0.0.1:8085/"`, qui transmettait `//` à qBittorrent ; le chemin de proxy est désormais `/qbittorrent/`. L'adresse doit donc se terminer par une barre oblique.
 

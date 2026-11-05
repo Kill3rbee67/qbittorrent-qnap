@@ -176,7 +176,7 @@ sed -i '/^Password_PBKDF2=/d' /share/CACHEDEV1_DATA/.qpkg/qBittorrent/profile/qB
 ```
 
 **myQNAPcloud Link : « Ce service ne prend pas en charge myQNAPcloud Link », ou page d'erreur sur `/qbittorrent/`**
-Le message apparaît avec les versions antérieures à 5.3.3.0, et « Type de fichier inacceptable » avec la 5.3.3.0 : mettez à jour (5.3.3.1 ou plus). Vérifiez que l'adresse se termine bien par `/qbittorrent/`. Si `/qbittorrent/` affiche ensuite une erreur, vérifiez que l'accès direct `http://IP-DU-NAS:8085` fonctionne, que HTTPS n'est pas activé dans les réglages de qBittorrent, puis redémarrez qBittorrent depuis l'App Center. Si le problème persiste, ouvrez un ticket avec le résultat de ces commandes (en SSH, en root) :
+Le message apparaît avec les versions antérieures à 5.3.3.0, et « Type de fichier inacceptable » avec la 5.3.3.0 : mettez à jour (5.3.3.1 ou plus). Vérifiez que l'adresse se termine bien par `/qbittorrent/`. Après une mise à jour depuis la 5.3.3.0, `/etc/app_proxy.conf` ne doit plus contenir de ligne `ProxyPass "/qbittorrent" …` (sans barre finale) : le paquet la retire à son démarrage (5.3.3.2 ou plus). Si `/qbittorrent/` affiche ensuite une erreur, vérifiez que l'accès direct `http://IP-DU-NAS:8085` fonctionne, que HTTPS n'est pas activé dans les réglages de qBittorrent, puis redémarrez qBittorrent depuis l'App Center. Si le problème persiste, ouvrez un ticket avec le résultat de ces commandes (en SSH, en root) :
 ```sh
 getcfg qBittorrent Use_Proxy -f /etc/config/qpkg.conf; getcfg qBittorrent Proxy_Path -f /etc/config/qpkg.conf
 cat /etc/app_proxy.conf

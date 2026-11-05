@@ -160,6 +160,25 @@ ensure_webui() {
     rm -f "$CONFIG_FILE.tmp"
 }
 
+# Proxy de QTS (/etc/app_proxy.conf, accès par /qbittorrent/ et myQNAPcloud Link) :
+# en passant de la version 5.3.3.0 (chemin /qbittorrent) à /qbittorrent/, QTS ajoute
+# la nouvelle règle sans retirer l'ancienne, qui reste prioritaire (qBittorrent
+# reçoit alors « // » : « Type de fichier inacceptable »). On retire l'ancienne,
+# puis on recharge les serveurs proxy de QTS (8080 et 443).
+APP_PROXY_CONF=${APP_PROXY_CONF:-/etc/app_proxy.conf}
+fix_qts_proxy() {
+    [ -w "$APP_PROXY_CONF" ] || return 0
+    grep -q "^ProxyPass \"/qbittorrent/\" " "$APP_PROXY_CONF" || return 0
+    grep -q "^ProxyPass \"/qbittorrent\" " "$APP_PROXY_CONF" || return 0
+    sed -i '/^ProxyPass "\/qbittorrent" /d' "$APP_PROXY_CONF"
+    echo "`date '+%F %T'` Ancienne règle /qbittorrent retirée du proxy de QTS" >> "$LOG"
+    for P in "apache_proxy /etc/apache-sys-proxy.conf" "apache_proxys /etc/apache-sys-proxy-ssl.conf"; do
+        set -- $P
+        [ -x "/usr/local/apache/bin/$1" ] && [ -f "$2" ] && "/usr/local/apache/bin/$1" -k graceful -f "$2" >/dev/null 2>&1
+    done
+    return 0
+}
+
 case "$1" in
   start)
     ENABLED=$(/sbin/getcfg $QPKG_NAME Enable -u -d FALSE -f $CONF)
@@ -180,6 +199,7 @@ case "$1" in
     prepare_ssl
     ensure_webui
     fix_port
+    fix_qts_proxy
     # Évite un journal qui grossit indéfiniment
     if [ -f "$LOG" ] && [ "$(wc -c < "$LOG")" -gt 1048576 ]; then
         : > "$LOG"
