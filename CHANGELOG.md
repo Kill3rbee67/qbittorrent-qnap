@@ -2,6 +2,9 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.3.1
+- Correction de l'accès par QTS et myQNAPcloud Link : « Type de fichier inacceptable, seul un fichier normal est autorisé » sur `/qbittorrent/`. QTS génère `ProxyPass "/qbittorrent" "http://127.0.0.1:8085/"`, qui transmettait `//` à qBittorrent ; le chemin de proxy est désormais `/qbittorrent/`. L'adresse doit donc se terminer par une barre oblique.
+
 ## 5.3.3.0
 - **Accès à distance par myQNAPcloud Link** : l'interface est aussi servie par le serveur web de QTS à l'adresse `/qbittorrent/` (proxy QTS), donc joignable depuis myqnapcloud.com sans ouvrir de port. L'icône du bureau QTS ne renvoie plus « Ce service ne prend pas en charge myQNAPcloud Link ».
 - Réglages appliqués au démarrage pour cet accès : proxy local déclaré de confiance (vraie adresse du client, protection CSRF), vérification de l'en-tête Host désactivée, authentification obligatoire pour les connexions locales (option « Ignorer l'authentification pour localhost » bloquée dans l'interface classique).

@@ -106,7 +106,7 @@ L'interface est aussi servie par le serveur web de QTS, à l'adresse **`/qbittor
 | Le réseau local | `http://IP-DU-NAS:8085` (accès direct) ou `http://IP-DU-NAS:8080/qbittorrent/` (via QTS ; `https://IP-DU-NAS/qbittorrent/` si HTTPS est activé dans QTS) |
 | Internet, avec myQNAPcloud Link | connectez-vous à votre NAS sur [myqnapcloud.com](https://www.myqnapcloud.com) puis cliquez sur l'icône **qBittorrent** du bureau QTS, ou, dans la barre d'adresse, remplacez `/cgi-bin/…` par `/qbittorrent/` (ex. `https://a4.myqnapcloud.com/qbittorrent/`) |
 
-Rien à ouvrir sur la box : myQNAPcloud Link relaie la connexion en HTTPS. Les mêmes identifiants que sur le réseau local sont demandés.
+L'adresse doit se terminer par une barre oblique : `/qbittorrent/`, pas `/qbittorrent`. Rien à ouvrir sur la box : myQNAPcloud Link relaie la connexion en HTTPS. Les mêmes identifiants que sur le réseau local sont demandés.
 
 Avant d'activer l'accès à distance :
 - **changez le mot de passe initial** `adminadmin` pour un mot de passe long et unique : la page devient accessible depuis Internet à toute personne qui connaît l'adresse de votre NAS ;
@@ -176,10 +176,10 @@ sed -i '/^Password_PBKDF2=/d' /share/CACHEDEV1_DATA/.qpkg/qBittorrent/profile/qB
 ```
 
 **myQNAPcloud Link : « Ce service ne prend pas en charge myQNAPcloud Link », ou page d'erreur sur `/qbittorrent/`**
-Le message apparaît avec les versions antérieures à 5.3.3.0 : mettez à jour. Si `/qbittorrent/` affiche ensuite une erreur, vérifiez que l'accès direct `http://IP-DU-NAS:8085` fonctionne, que HTTPS n'est pas activé dans les réglages de qBittorrent, puis redémarrez qBittorrent depuis l'App Center. Si le problème persiste, ouvrez un ticket avec le résultat de ces commandes (en SSH, en root) :
+Le message apparaît avec les versions antérieures à 5.3.3.0, et « Type de fichier inacceptable » avec la 5.3.3.0 : mettez à jour (5.3.3.1 ou plus). Vérifiez que l'adresse se termine bien par `/qbittorrent/`. Si `/qbittorrent/` affiche ensuite une erreur, vérifiez que l'accès direct `http://IP-DU-NAS:8085` fonctionne, que HTTPS n'est pas activé dans les réglages de qBittorrent, puis redémarrez qBittorrent depuis l'App Center. Si le problème persiste, ouvrez un ticket avec le résultat de ces commandes (en SSH, en root) :
 ```sh
 getcfg qBittorrent Use_Proxy -f /etc/config/qpkg.conf; getcfg qBittorrent Proxy_Path -f /etc/config/qpkg.conf
-grep -rn "qbittorrent" /etc/apache-sys-proxy*.conf /etc/config/apache/ 2>/dev/null | head
+cat /etc/app_proxy.conf
 curl -sI http://127.0.0.1:8080/qbittorrent/ | head -n 1
 ```
 
