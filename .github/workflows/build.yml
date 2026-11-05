@@ -51,6 +51,7 @@ jobs:
           path: build/*
 
       - name: Publier la release
+        id: release
         if: >-
           startsWith(github.ref, 'refs/tags/v') ||
           (github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.v.outputs.exists == 'false')
@@ -63,10 +64,28 @@ jobs:
           generate_release_notes: true
           body: |
             ## Installation
-            1. Téléchargez `qBittorrent_${{ steps.v.outputs.version }}_x86_64.qpkg` ci-dessous (NAS **x86_64** uniquement).
+            1. Téléchargez ci-dessous le paquet de votre processeur : `qBittorrent_${{ steps.v.outputs.version }}_x86_64.qpkg` (Intel / AMD) ou `qBittorrent_${{ steps.v.outputs.version }}_arm_64.qpkg` (ARM 64 bits, expérimental).
             2. App Center › Paramètres › Général : cochez « Autoriser l'installation d'applications sans signature numérique valide ».
             3. App Center › **Installation manuelle** › choisissez le fichier.
             4. Ouvrez `http://IP-DU-NAS:8085` et connectez-vous avec **admin / adminadmin**, puis choisissez votre mot de passe.
 
+            Plus simple : ajoutez la source d'applications `https://raw.githubusercontent.com/${{ github.repository }}/main/repository.xml` dans l'App Center (Paramètres › Source d'applications) pour installer en un clic et recevoir les mises à jour (en test).
+
             Mise à jour : installez par-dessus la version précédente, vos torrents et votre mot de passe sont conservés.
             Détails des changements : [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+
+      # Source d'applications de l'App Center : pointe vers la release qui vient
+      # d'être publiée. Mise à jour seulement après la publication, pour qu'elle
+      # ne référence jamais un paquet inexistant.
+      - name: Mettre à jour repository.xml
+        if: steps.release.outcome == 'success'
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+          tools/make-repository.sh "$GITHUB_REPOSITORY"
+          if git diff --quiet -- repository.xml; then
+            echo "repository.xml déjà à jour"; exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "repository.xml : qBittorrent ${{ steps.v.outputs.version }}" -- repository.xml
+          git push origin main

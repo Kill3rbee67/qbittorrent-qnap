@@ -507,7 +507,7 @@ function renderToolbar() {
       <button class="btn primary" data-act="pc">${I.upload()}<span>Importer<span class="lbl-long"> depuis le PC</span></span></button>
       <button class="btn" data-act="magnet">${I.magnet(16)}<span>Lien magnet</span></button>
       <button class="btn" data-act="mkdir">${I.newdir()}<span>Nouveau dossier</span></button>
-      <button class="btn" data-act="subscribe" title="Télécharger automatiquement dans ce dossier les nouvelles sorties d'un flux RSS (ex. une recherche nyaa)">${I.rss()}<span>S'abonner<span class="lbl-long"> (RSS)</span></span></button>
+      <button class="btn" data-act="subscribe" title="Télécharger automatiquement dans ce dossier les nouvelles sorties d'un flux RSS (ex. une recherche sur votre site de torrents)">${I.rss()}<span>S'abonner<span class="lbl-long"> (RSS)</span></span></button>
       <button class="btn" data-act="addsel" ${n ? '' : 'disabled'} title="Ajouter les fichiers .torrent cochés de ce dossier">${I.plus()}Ajouter la sélection${n ? ` (${n})` : ''}</button>
       <span class="grow"></span>
       <input class="search" type="search" data-search="fsearch" placeholder="Filtrer ce dossier" value="${esc(state.fsearch)}">
@@ -708,7 +708,7 @@ function renderRssView() {
   const names = Object.keys(rss.rules).sort(coll.compare);
   if (!names.length) {
     c.innerHTML = `<div class="empty">${I.rss(48)}<strong>Aucun abonnement</strong>
-      <span style="max-width:520px">Ouvrez le dossier où ranger une série (par exemple <b>plex › Mangas › Ma série</b>), cliquez sur <b>« S'abonner (RSS) »</b> et collez l'adresse d'une recherche nyaa.si.
+      <span style="max-width:520px">Ouvrez le dossier où ranger une série (par exemple <b>plex › Mangas › Ma série</b>), cliquez sur <b>« S'abonner (RSS) »</b> et collez l'adresse du flux RSS d'une recherche.
       Chaque nouvel épisode publié sera alors téléchargé automatiquement dans ce dossier.</span>
       <button class="btn primary" data-act="rssnew">${I.plus()}Nouvel abonnement</button></div>`;
     return;
@@ -731,7 +731,7 @@ function renderRssView() {
   c.innerHTML = warn + `<table><thead><tr><th class="ck" title="Actif">✓</th><th>Abonnement</th><th class="hide-sm">Filtre</th><th>Dossier</th>
     <th class="hide-md">Dernier ajout</th><th class="hide-sm">État du flux</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-// Une adresse de recherche nyaa est convertie en flux RSS (ajout de page=rss)
+// Pour les sites qui proposent un flux RSS de leurs recherches via page=rss, l'adresse de la page de résultats est convertie
 function toFeedUrl(s) {
   let u; try { u = new URL(s.trim()); } catch (_) { return null; }
   if (!/^https?:$/.test(u.protocol)) return null;
@@ -764,9 +764,9 @@ function subscribeDialog({ dest = state.defaultPath, name = null } = {}) {
   dialog({
     title: r ? `Modifier « ${name} »` : 'Nouvel abonnement RSS', ok: r ? 'Enregistrer' : 'S\'abonner',
     body: `
-      <label>Adresse de la recherche nyaa ou du flux RSS
-        <input class="field" id="rs-url" ${r ? 'readonly' : ''} value="${esc(f ? f.url : (r ? (r.affectedFeeds || [])[0] || '' : ''))}" placeholder="https://nyaa.si/?f=0&c=1_0&q=Tsundere-Raws+Nia+Liston+1080p" spellcheck="false"></label>
-      ${r ? '' : `<span class="muted" style="font-size:12.5px;margin-top:-6px">Faites votre recherche sur nyaa.si puis copiez l'adresse de la page : elle est convertie automatiquement en flux RSS.</span>
+      <label>Adresse du flux RSS
+        <input class="field" id="rs-url" ${r ? 'readonly' : ''} value="${esc(f ? f.url : (r ? (r.affectedFeeds || [])[0] || '' : ''))}" placeholder="https://…  (flux RSS de votre recherche)" spellcheck="false"></label>
+      ${r ? '' : `<span class="muted" style="font-size:12.5px;margin-top:-6px">Collez l'adresse du flux RSS de votre recherche. Sur certains sites, l'adresse de la page de résultats suffit : elle est convertie automatiquement en flux RSS.</span>
       <label>Nom de l'abonnement<input class="field" id="rs-name" maxlength="100"></label>`}
       <label><span>Le titre doit contenir <i>(facultatif)</i></span>
         <input class="field" id="rs-must" value="${esc(r ? r.mustContain || '' : '')}" placeholder="vide = tout ce que publie le flux · ex. 1080p"></label>

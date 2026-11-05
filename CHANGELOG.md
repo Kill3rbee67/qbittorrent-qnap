@@ -2,6 +2,12 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.1.1
+- **Version ARM 64 bits (expérimentale)** : chaque release contient désormais aussi `qBittorrent_<version>_arm_64.qpkg`, pour les NAS QNAP à processeur ARM 64 bits. Pas encore testée sur un vrai NAS.
+- **Source d'applications App Center (en test)** : en ajoutant l'adresse du `repository.xml` du projet dans l'App Center, qBittorrent s'installe en un clic et les mises à jour sont proposées automatiquement. Le bon paquet (x86_64 ou ARM) est choisi selon le NAS.
+- Nouvelles installations : 10 téléchargements simultanés et 15 torrents actifs par défaut (au lieu de 3 et 5), torrents lents non comptés. Les installations existantes gardent leurs réglages.
+- Textes de l'interface et de la documentation rendus neutres vis-à-vis des sites de torrents.
+
 ## 5.3.1.0
 - **Barre de menus** dans l'interface explorateur, comme dans qBittorrent : Fichier, Édition, Affichage, Outils, Aide.
   - Édition : démarrer, arrêter, forcer la reprise, déplacer vers un autre dossier, revérifier, réannoncer, ordre dans la file d'attente, supprimer, tout sélectionner, tout démarrer / arrêter.
@@ -27,7 +33,7 @@ Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révis
 
 ## 5.3.0.6
 - Panneau de détails : les champs « Dossier » et « Commentaire » ne se chevauchent plus (affichés sur toute la largeur, avec retour à la ligne).
-- Une adresse web en commentaire (ex. page nyaa.si du torrent) est cliquable.
+- Une adresse web en commentaire (ex. page du torrent sur son site d'origine) est cliquable.
 
 ## 5.3.0.5
 - Panneau de détails quand on clique sur un torrent, comme dans Download Station :

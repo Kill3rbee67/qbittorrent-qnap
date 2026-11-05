@@ -24,21 +24,35 @@ Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorr
 
 | | |
 |---|---|
-| Processeur | **x86_64** (Intel / AMD) uniquement |
-| Testé sur | TS-453D (Celeron J4125) |
+| Processeur | **x86_64** (Intel / AMD) ; **ARM 64 bits** en version expérimentale |
+| Testé sur | TS-453D (Celeron J4125). La version ARM 64 bits n'a pas encore été testée sur un vrai NAS. |
 | QTS minimum | 4.5.0 |
 | qBittorrent | 5.3.0 (binaire statique [userdocs/qbittorrent-nox-static](https://github.com/userdocs/qbittorrent-nox-static)) |
 
-Les modèles ARM ne sont pas encore pris en charge. Les contributions sont bienvenues : il suffit en principe d'ajouter le binaire ARM correspondant au build.
+Chaque version est publiée en deux paquets : `…_x86_64.qpkg` pour les processeurs Intel / AMD et `…_arm_64.qpkg` pour les processeurs ARM 64 bits (par exemple TS-233, TS-433, TS-x28A, TS-x32X). Les anciens modèles ARM 32 bits ne sont pas pris en charge. Si vous essayez la version ARM, un retour (réussite ou problème) dans les [issues](../../issues) est le bienvenu.
 
 Pour connaître le processeur de votre NAS : Panneau de configuration › Système › Informations système.
 
 ## Installation
 
-1. Téléchargez le fichier `qBittorrent_<version>_x86_64.qpkg` depuis la [dernière release](../../releases/latest).
-2. Dans l'**App Center**, ouvrez les paramètres (roue dentée), onglet *Général*, et cochez **« Autoriser l'installation d'applications sans signature numérique valide »**. Le paquet n'est pas signé par QNAP : seul QNAP (ou le Qnapclub Store) peut signer des paquets reconnus par l'App Center.
-3. Toujours dans l'App Center, cliquez sur **Installation manuelle** et choisissez le fichier `.qpkg`.
-4. Ouvrez **`http://IP-DE-VOTRE-NAS:8085`**.
+Dans les deux cas, commencez par ouvrir l'**App Center**, ses paramètres (roue dentée), onglet *Général*, et cochez **« Autoriser l'installation d'applications sans signature numérique valide »**. Le paquet n'est pas signé par QNAP : seul QNAP (ou le Qnapclub Store) peut signer des paquets reconnus par l'App Center.
+
+### Méthode 1 : source d'applications (en test)
+
+L'App Center installe alors qBittorrent en un clic et propose lui-même les mises à jour.
+
+1. App Center › paramètres › onglet **Source d'applications** (*App Repository*) › **Ajouter**.
+2. Nom : `qbittorrent-qnap` ; adresse : `https://raw.githubusercontent.com/Kill3rbee67/qbittorrent-qnap/main/repository.xml`
+3. qBittorrent apparaît dans cette source : cliquez sur **Installer**.
+
+Cette méthode n'a pas encore été vérifiée sur tous les modèles. Si qBittorrent n'apparaît pas pour votre NAS, utilisez la méthode 2 et signalez votre modèle dans les [issues](../../issues).
+
+### Méthode 2 : installation manuelle
+
+1. Téléchargez depuis la [dernière release](../../releases/latest) le fichier qui correspond à votre processeur : `qBittorrent_<version>_x86_64.qpkg` (Intel / AMD) ou `qBittorrent_<version>_arm_64.qpkg` (ARM 64 bits).
+2. Dans l'App Center, cliquez sur **Installation manuelle** et choisissez le fichier `.qpkg`.
+
+Ouvrez ensuite **`http://IP-DE-VOTRE-NAS:8085`**.
 
 ### Première connexion
 
@@ -53,8 +67,8 @@ Vous pourrez ensuite le modifier à tout moment avec le bouton « Mot de passe �
 
 ## Télécharger automatiquement une série (RSS)
 
-1. Sur nyaa.si, faites la recherche qui correspond aux sorties voulues, par exemple `Tsundere-Raws Nia Liston 1080p`, et copiez l'adresse de la page de résultats.
-2. Dans l'explorateur, ouvrez (ou créez) le dossier où ranger la série, puis cliquez sur **« S'abonner (RSS) »** et collez l'adresse. Elle est convertie automatiquement en flux RSS.
+1. Sur votre site de torrents, faites la recherche qui correspond aux sorties voulues (par exemple `Ma Série 1080p`) et copiez l'adresse de son **flux RSS**. Sur certains sites, l'adresse de la page de résultats suffit : elle est convertie automatiquement.
+2. Dans l'explorateur, ouvrez (ou créez) le dossier où ranger la série, puis cliquez sur **« S'abonner (RSS) »** et collez l'adresse.
 3. Facultatif : affinez avec « Le titre doit contenir » / « ne doit pas contenir » (`720p|Batch`…).
 
 Par défaut, seuls les **épisodes à venir** sont téléchargés (cochez « Télécharger aussi les épisodes déjà publiés » pour rattraper ceux du flux), et un même épisode n'est jamais téléchargé deux fois. La page **Abonnements RSS** permet de suspendre, modifier ou supprimer un abonnement, de forcer une vérification et de régler la fréquence de vérification des flux (30 minutes par défaut).
@@ -67,9 +81,10 @@ Par défaut, seuls les **épisodes à venir** sont téléchargés (cochez « Té
 | Port BitTorrent | **51881** : pour de bons débits, redirigez-le vers le NAS sur votre box. Si ce port est déjà pris au démarrage, un port libre proche est choisi automatiquement (voir le journal). |
 | Dossier de téléchargement par défaut | dossier partagé **Download** de QTS |
 | Journal | `/share/CACHEDEV1_DATA/.qpkg/qBittorrent/qbittorrent.log` (le volume peut varier) |
+| Téléchargements simultanés | 10 par défaut (15 torrents actifs au total, torrents lents non comptés), réglable dans Outils › Réglages › File d'attente |
 | Réglages et torrents | dossier `profile/` du paquet, conservés lors des mises à jour |
 
-**Mise à jour** : installez simplement la nouvelle version par-dessus l'ancienne. Vos torrents et votre mot de passe sont conservés.
+**Mise à jour** : avec la source d'applications, cliquez sur **Mettre à jour** dans l'App Center. Sinon, installez la nouvelle version par-dessus l'ancienne. Dans les deux cas, vos torrents et votre mot de passe sont conservés.
 
 **Interface d'origine de qBittorrent** : bouton « ⇄ Interface classique » (barre du haut), ou directement `http://IP-DU-NAS:8085/classic.html`. Pour revenir : bouton « ⇄ Interface explorateur » en haut à droite. Ne décochez pas « Utiliser l'interface Web alternative » dans les options : ce réglage fait fonctionner les deux interfaces.
 
@@ -114,7 +129,7 @@ sudo apt install git curl rsync gcc qt6-l10n-tools
 
 Le paquet est produit dans `build/`. Le script télécharge le binaire qBittorrent (version et empreinte SHA-256 épinglées en tête de `build.sh`) et l'outil [QDK](https://github.com/qnap-dev/QDK) de QNAP.
 
-**Publier une nouvelle version** : augmentez `QPKG_VER` dans `src/qpkg.cfg`, complétez `CHANGELOG.md` et poussez sur `main`. GitHub Actions construit le paquet, crée le tag `v<version>` et publie la release. Chaque pull request est aussi construite (paquet disponible dans les artefacts du workflow).
+**Publier une nouvelle version** : augmentez `QPKG_VER` dans `src/qpkg.cfg`, complétez `CHANGELOG.md` et poussez sur `main`. GitHub Actions construit le paquet, crée le tag `v<version>`, publie la release, puis met à jour `repository.xml` pour que l'App Center propose la mise à jour. Chaque pull request est aussi construite (paquet disponible dans les artefacts du workflow).
 
 ### Organisation du dépôt
 
@@ -126,6 +141,9 @@ src/shared/webui/private/       interface « explorateur de fichiers » (l'inter
 src/icons/                      icônes de l'App Center
 src/package_routines            gabarit QDK (non modifié)
 build.sh                        construction du .qpkg
+tools/make-repository.sh        génération de repository.xml (source d'applications)
+repository.xml                  source d'applications de l'App Center (mise à jour par la CI)
+assets/                         icônes affichées dans l'App Center
 ```
 
 ## Crédits et licence
@@ -143,4 +161,4 @@ Projet communautaire, sans lien avec QNAP Systems, Inc. ni avec le projet qBitto
 
 ### English summary
 
-A ready-to-install **QPKG** that adds qBittorrent 5.3 to x86_64 QNAP NAS models, with a French web UI laid out like a file browser: navigate your NAS shares and add `.torrent` files (from your PC or already on the NAS) or magnet links straight into the folder you are viewing. Install it from App Center (manual installation; enable unsigned apps first), then open `http://NAS-IP:8085` and log in with `admin` / `adminadmin`. You will be asked to choose your own password. Build it yourself with `./build.sh`.
+A ready-to-install **QPKG** that adds qBittorrent 5.3 to x86_64 QNAP NAS models (ARM 64-bit build available, experimental), with a French web UI laid out like a file browser: navigate your NAS shares and add `.torrent` files (from your PC or already on the NAS) or magnet links straight into the folder you are viewing. Enable unsigned apps in App Center, then either add the app repository `https://raw.githubusercontent.com/Kill3rbee67/qbittorrent-qnap/main/repository.xml` (one-click install and update notifications) or install the `.qpkg` from the releases manually, then open `http://NAS-IP:8085` and log in with `admin` / `adminadmin`. You will be asked to choose your own password. Build it yourself with `./build.sh`.

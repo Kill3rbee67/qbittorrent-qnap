@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Construit le paquet QPKG qBittorrent pour QNAP (x86_64).
+# Construit les paquets QPKG qBittorrent pour QNAP.
 #
-#   ./build.sh            -> build/qBittorrent_<version>_x86_64.qpkg
+#   ./build.sh            -> build/qBittorrent_<version>_x86_64.qpkg  (Intel / AMD)
+#                            build/qBittorrent_<version>_arm_64.qpkg  (ARM 64 bits, expérimental)
 #
 # Dépendances : bash, git, curl, rsync, gcc, tar, gzip, sha256sum, md5sum.
 # Le binaire qBittorrent-nox et l'outil QDK de QNAP sont téléchargés dans .cache/
@@ -12,6 +13,9 @@ set -euo pipefail
 # Binaire statique : https://github.com/userdocs/qbittorrent-nox-static
 QBT_RELEASE="release-5.3.0_v2.1.2"
 QBT_SHA256_X86_64="563e695a2b830e62e627e1ae403bcfcc494e444d5cabb5ecc1e09907353d8ed5"
+QBT_SHA256_ARM_64="ac1e57089795270489491320c5fff0ceaed8e8910cf3abb6be597879408eb033"
+# Architectures QDK construites, et nom du binaire correspondant chez userdocs
+ARCHS="x86_64:x86_64 arm_64:aarch64"
 # Interface web d'origine de qBittorrent (même version que le binaire), servie
 # à côté de l'interface explorateur sous classic.html
 QBT_WEBUI_TAG="release-5.3.0"
@@ -60,25 +64,33 @@ if [ ! -d "$WEBUI_SRC/src/webui/www/public/images" ]; then
 fi
 LRELEASE="$(command -v lrelease || command -v lrelease-qt6 || ls /usr/lib/qt6/bin/lrelease 2>/dev/null || true)"
 
-# 2. Binaire qBittorrent-nox
-BIN="$CACHE/qbittorrent-nox-$QBT_RELEASE-x86_64"
-if [ ! -f "$BIN" ]; then
-    step "Téléchargement de qbittorrent-nox ($QBT_RELEASE, x86_64)"
-    curl -fsSL --retry 3 -o "$BIN.part" \
-        "https://github.com/userdocs/qbittorrent-nox-static/releases/download/$QBT_RELEASE/x86_64-qbittorrent-nox"
-    mv "$BIN.part" "$BIN"
-fi
-echo "$QBT_SHA256_X86_64  $BIN" | sha256sum -c --quiet - \
-    || { rm -f "$BIN"; die "empreinte SHA-256 du binaire incorrecte (fichier supprimé, relancez le build)"; }
+# 2. Binaires qBittorrent-nox (un par architecture)
+for a in $ARCHS; do
+    arch="${a%%:*}"; name="${a##*:}"
+    BIN="$CACHE/qbittorrent-nox-$QBT_RELEASE-$arch"
+    if [ ! -f "$BIN" ]; then
+        step "Téléchargement de qbittorrent-nox ($QBT_RELEASE, $arch)"
+        curl -fsSL --retry 3 -o "$BIN.part" \
+            "https://github.com/userdocs/qbittorrent-nox-static/releases/download/$QBT_RELEASE/$name-qbittorrent-nox"
+        mv "$BIN.part" "$BIN"
+    fi
+    var="QBT_SHA256_$(echo "$arch" | tr 'a-z' 'A-Z')"
+    echo "${!var}  $BIN" | sha256sum -c --quiet - \
+        || { rm -f "$BIN"; die "empreinte SHA-256 du binaire $arch incorrecte (fichier supprimé, relancez le build)"; }
+done
 
 # 3. Préparation de l'arborescence du paquet
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 step "Préparation du paquet"
 cp -r "$SRC" "$WORK/pkg"
-mkdir -p "$WORK/pkg/x86_64"
-cp "$BIN" "$WORK/pkg/x86_64/qbittorrent-nox"
-chmod 755 "$WORK/pkg/x86_64/qbittorrent-nox" "$WORK/pkg/shared/qBittorrent.sh"
+for a in $ARCHS; do
+    arch="${a%%:*}"
+    mkdir -p "$WORK/pkg/$arch"
+    cp "$CACHE/qbittorrent-nox-$QBT_RELEASE-$arch" "$WORK/pkg/$arch/qbittorrent-nox"
+    chmod 755 "$WORK/pkg/$arch/qbittorrent-nox"
+done
+chmod 755 "$WORK/pkg/shared/qBittorrent.sh"
 
 # Version du paquet affichée dans « À propos » de l'interface explorateur
 UI="$WORK/pkg/shared/webui"
@@ -111,16 +123,18 @@ step "Assemblage avec qbuild"
 ( cd "$WORK/run" && PATH="$CACHE/bin:$PATH" TAR_OPTIONS="--owner=0 --group=0 --numeric-owner" \
     "$CACHE/QDK/shared/bin/qbuild" --root "$WORK/pkg" )
 
-QPKG="$WORK/pkg/build/qBittorrent_${VERSION}_x86_64.qpkg"
-[ -f "$QPKG" ] || die "qbuild n'a pas produit $QPKG"
-# Garde-fou : sans rsync, qbuild produit un paquet vide sans signaler d'erreur
-SIZE=$(stat -c %s "$QPKG")
-[ "$SIZE" -gt 20000000 ] || die "paquet anormalement petit ($SIZE octets) : le binaire n'a pas été inclus"
-
-# 5. Résultat
-rm -f "$OUT"/qBittorrent_*_x86_64.qpkg*
-cp "$QPKG" "$OUT/"
-( cd "$OUT" && sha256sum "$(basename "$QPKG")" > "$(basename "$QPKG").sha256" \
-            && md5sum "$(basename "$QPKG")" > "$(basename "$QPKG").md5" )
-step "Terminé : build/$(basename "$QPKG") ($((SIZE / 1048576)) Mo)"
-cat "$OUT/$(basename "$QPKG").sha256"
+# 5. Résultat : un paquet par architecture
+rm -f "$OUT"/qBittorrent_*.qpkg*
+for a in $ARCHS; do
+    arch="${a%%:*}"
+    QPKG="$WORK/pkg/build/qBittorrent_${VERSION}_${arch}.qpkg"
+    [ -f "$QPKG" ] || die "qbuild n'a pas produit $QPKG"
+    # Garde-fou : sans rsync, qbuild produit un paquet vide sans signaler d'erreur
+    SIZE=$(stat -c %s "$QPKG")
+    [ "$SIZE" -gt 20000000 ] || die "paquet $arch anormalement petit ($SIZE octets) : le binaire n'a pas été inclus"
+    cp "$QPKG" "$OUT/"
+    ( cd "$OUT" && sha256sum "$(basename "$QPKG")" > "$(basename "$QPKG").sha256" \
+                && md5sum "$(basename "$QPKG")" > "$(basename "$QPKG").md5" )
+    step "Terminé : build/$(basename "$QPKG") ($((SIZE / 1048576)) Mo)"
+    cat "$OUT/$(basename "$QPKG").sha256"
+done

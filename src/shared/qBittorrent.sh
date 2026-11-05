@@ -42,6 +42,10 @@ Accepted=true
 [BitTorrent]
 Session\DefaultSavePath=$DL_DIR
 Session\Port=$TORRENT_PORT
+Session\MaxActiveDownloads=10
+Session\MaxActiveUploads=5
+Session\MaxActiveTorrents=15
+Session\IgnoreSlowTorrentsForQueueing=true
 
 [Preferences]
 General\Locale=fr
