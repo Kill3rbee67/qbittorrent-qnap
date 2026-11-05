@@ -1,0 +1,46 @@
+name: Signaler un problème
+description: Quelque chose ne fonctionne pas comme prévu
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de prendre le temps de signaler ce problème. Ne publiez jamais votre mot de passe ni le contenu du dossier `profile/`.
+  - type: input
+    id: modele
+    attributes:
+      label: Modèle du NAS et processeur
+      description: Panneau de configuration › Système › Informations système
+      placeholder: TS-453D, Intel Celeron J4125
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Version de QTS et version du paquet
+      description: La version du paquet est dans Aide › À propos de l'interface explorateur
+      placeholder: QTS 5.2.1, qBittorrent pour QNAP 5.3.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Mode d'installation
+      options:
+        - Source d'applications de l'App Center
+        - Installation manuelle du .qpkg
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Que s'est-il passé ?
+      description: Ce que vous avez fait, ce que vous attendiez, ce qui s'est passé.
+    validations:
+      required: true
+  - type: textarea
+    id: journal
+    attributes:
+      label: Fin du journal (facultatif)
+      description: "En SSH : tail -n 50 /share/CACHEDEV1_DATA/.qpkg/qBittorrent/qbittorrent.log"
+      render: text

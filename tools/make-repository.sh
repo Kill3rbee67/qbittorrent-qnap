@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # Génère repository.xml : la source d'applications à ajouter dans l'App Center de QTS
 # (App Center › Paramètres › Sources d'applications). Le paquet s'installe alors
 # en un clic et l'App Center signale les nouvelles versions.

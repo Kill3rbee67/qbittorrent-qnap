@@ -2,6 +2,25 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.2.0
+Sécurité
+- Page de connexion : avertissement explicite (le mot de passe initial `adminadmin` est public, à changer aussitôt ; pas d'exposition sur Internet), renforcé quand la page est ouverte depuis une adresse Internet.
+- **HTTPS en option** (Outils › Réglages › Interface) avec le certificat du NAS, recopié à chaque démarrage pour suivre ses renouvellements (Let's Encrypt compris), ou un certificat auto-signé à défaut.
+- README : risques liés au mot de passe initial public et à l'exécution en root détaillés.
+
+Fonctionnalités
+- **Espace disque** : espace libre et taille des torrents affichés dans la fenêtre d'ajout, avec alerte en cas de manque de place ; espace libre dans la barre d'état.
+- **Notifications** (Outils › Réglages › Notifications) : e-mail à la fin d'un téléchargement, webhook (Discord, Slack, Mattermost, ntfy, Home Assistant…) à chaque nouveau torrent et/ou téléchargement terminé.
+
+Packaging
+- Test automatique de mise à jour en CI : la version précédente est installée, des données y sont créées, la nouvelle version est installée par-dessus et la conservation de tout est vérifiée avant chaque publication.
+- Vérification explicite des empreintes des binaires amont en CI (`./build.sh --check`) et fichier `PROVENANCE.txt` dans chaque release.
+- Workflow hebdomadaire qui ouvre un ticket quand une nouvelle version de qbittorrent-nox ou de QDK est publiée, avec les lignes de `build.sh` à mettre à jour.
+
+Documentation et communauté
+- README : résumé en anglais en tête, sections Mise à jour et migration, Désinstallation, Notifications, Plex / Jellyfin / Container Station, Licences.
+- `docs/LICENCES.md` (licences de chaque composant embarqué), en-têtes SPDX, `CONTRIBUTING.md`, modèles de tickets.
+
 ## 5.3.1.1
 - **Version ARM 64 bits (expérimentale)** : chaque release contient désormais aussi `qBittorrent_<version>_arm_64.qpkg`, pour les NAS QNAP à processeur ARM 64 bits. Pas encore testée sur un vrai NAS.
 - **Source d'applications App Center (en test)** : en ajoutant l'adresse du `repository.xml` du projet dans l'App Center, qBittorrent s'installe en un clic et les mises à jour sont proposées automatiquement. Le bon paquet (x86_64 ou ARM) est choisi selon le NAS.

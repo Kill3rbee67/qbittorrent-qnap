@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+name: Versions amont
+
+# Chaque semaine, compare les versions épinglées dans build.sh aux dernières
+# versions publiées (binaire qbittorrent-nox de userdocs, outil QDK de QNAP).
+# En cas de nouveauté, ouvre un ticket avec les lignes à mettre à jour,
+# empreintes SHA-256 comprises (un seul ticket par version).
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # lundi, 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comparer aux dernières versions et ouvrir un ticket si besoin
+        run: |
+          set -euo pipefail
+          api() { curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/$1"; }
+          open_issue() {   # titre, corps (fichier)
+            if api "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" | jq -e --arg t "$1" 'any(.[]; .title == $t)' >/dev/null; then
+              echo "Ticket déjà ouvert : $1"; return
+            fi
+            jq -n --arg t "$1" --rawfile b "$2" '{title: $t, body: $b}' \
+              | curl -fsSL -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+                     -d @- "https://api.github.com/repos/$GITHUB_REPOSITORY/issues" | jq -r '"Ticket ouvert : " + .html_url'
+          }
+
+          # --- Binaire qbittorrent-nox (userdocs) ---
+          CUR=$(sed -n 's/^QBT_RELEASE="\(.*\)"/\1/p' build.sh)
+          NEW=$(api repos/userdocs/qbittorrent-nox-static/releases/latest | jq -r .tag_name)
+          echo "qbittorrent-nox : épinglé $CUR, dernier $NEW"
+          if [ -n "$NEW" ] && [ "$NEW" != "null" ] && [ "$NEW" != "$CUR" ]; then
+            BASE="https://github.com/userdocs/qbittorrent-nox-static/releases/download/$NEW"
+            X86=$(curl -fsSL "$BASE/x86_64-qbittorrent-nox" | sha256sum | cut -d' ' -f1)
+            ARM=$(curl -fsSL "$BASE/aarch64-qbittorrent-nox" | sha256sum | cut -d' ' -f1)
+            QV=$(echo "$NEW" | sed -n 's/^release-\([0-9.]*\)_.*/\1/p')
+            cat > body.md <<EOF
+          Une nouvelle version du binaire statique qbittorrent-nox est disponible : **$NEW** (actuellement épinglé : \`$CUR\`).
+
+          Notes de version : https://github.com/userdocs/qbittorrent-nox-static/releases/tag/$NEW
+
+          ### Mise à jour proposée de \`build.sh\`
+          \`\`\`sh
+          QBT_RELEASE="$NEW"
+          QBT_SHA256_X86_64="$X86"
+          QBT_SHA256_ARM_64="$ARM"
+          QBT_WEBUI_TAG="release-$QV"
+          \`\`\`
+          Les empreintes ont été calculées par ce workflow à partir des fichiers publiés : comparez-les avec celles indiquées par userdocs avant de les reprendre.
+
+          Puis : vérifier que \`release-$QV\` existe dans https://github.com/qbittorrent/qBittorrent/tags (interface classique), passer \`QPKG_VER\` à \`$QV.0\` dans \`src/qpkg.cfg\`, compléter \`CHANGELOG.md\` et pousser sur \`main\` : la CI construit, teste la mise à jour et publie.
+          EOF
+            sed -i 's/^          //' body.md
+            open_issue "Nouvelle version amont : qbittorrent-nox $NEW" body.md
+          fi
+
+          # --- QDK (QNAP) ---
+          CUR=$(sed -n 's/^QDK_TAG="\(.*\)"/\1/p' build.sh)
+          NEW=$(api repos/qnap-dev/QDK/releases/latest 2>/dev/null | jq -r .tag_name || true)
+          echo "QDK : épinglé $CUR, dernier ${NEW:-inconnu}"
+          if [ -n "$NEW" ] && [ "$NEW" != "null" ] && [ "$NEW" != "$CUR" ]; then
+            printf 'Une nouvelle version de QDK (outil de création de paquets de QNAP) est disponible : **%s** (actuellement épinglé : `%s`).\n\nNotes : https://github.com/qnap-dev/QDK/releases/tag/%s\n\nMise à jour : `QDK_TAG="%s"` dans `build.sh`, puis pousser sur `main` (la CI construit et teste la mise à jour).\n' "$NEW" "$CUR" "$NEW" "$NEW" > body.md
+            open_issue "Nouvelle version amont : QDK $NEW" body.md
+          fi

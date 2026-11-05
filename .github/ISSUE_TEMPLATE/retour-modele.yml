@@ -1,0 +1,40 @@
+name: Retour sur mon modèle (ARM, source d'applications)
+description: Indiquer si le paquet fonctionne sur votre NAS, en particulier pour la version ARM 64 bits ou la source d'applications
+labels: [retour-materiel]
+body:
+  - type: input
+    id: modele
+    attributes:
+      label: Modèle du NAS et processeur
+      placeholder: TS-433, ARM Cortex-A55
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Version de QTS et version du paquet
+    validations:
+      required: true
+  - type: dropdown
+    id: paquet
+    attributes:
+      label: Paquet utilisé
+      options:
+        - x86_64
+        - arm_64
+    validations:
+      required: true
+  - type: checkboxes
+    id: resultat
+    attributes:
+      label: Ce qui fonctionne
+      options:
+        - label: Installation
+        - label: Interface web (connexion, explorateur)
+        - label: Téléchargement d'un torrent
+        - label: qBittorrent apparaît dans la source d'applications de l'App Center
+  - type: textarea
+    id: remarques
+    attributes:
+      label: Remarques
+      description: "Si qBittorrent n'apparaît pas dans la source d'applications, indiquez le résultat de cette commande en SSH : getcfg System \"Model\" -f /etc/default_config/uLinux.conf"

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 // Ajouté à l'interface d'origine de qBittorrent (classic.html) par le paquet QNAP :
 // - bouton pour revenir à l'interface explorateur ;
 // - ouverture directe de la fenêtre Options quand on arrive par classic.html#reglages.

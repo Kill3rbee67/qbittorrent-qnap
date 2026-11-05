@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -630,7 +631,7 @@ function renderStatus() {
   const sb = $('#statusbar');
   if (state.view === 'torrents') {
     const n = visibleTorrents().length;
-    sb.innerHTML = `<span>${n} torrent${n > 1 ? 's' : ''}</span>${state.sel.size ? `<span>${state.sel.size} sélectionné${state.sel.size > 1 ? 's' : ''}</span>` : ''}${connHTML()}`;
+    sb.innerHTML = `<span>${n} torrent${n > 1 ? 's' : ''}</span>${state.sel.size ? `<span>${state.sel.size} sélectionné${state.sel.size > 1 ? 's' : ''}</span>` : ''}${connHTML()}${freeHTML()}`;
     return;
   }
   if (state.view === 'rss') {
@@ -1263,12 +1264,41 @@ const SETTINGS = [
     ['rss_refresh_interval', 'int', 'Vérifier les flux toutes les (minutes)', { min: 1 }],
     ['rss_max_articles_per_feed', 'int', 'Éléments conservés par flux', { min: 1 }],
   ]],
+  ['notif', 'Notifications', [
+    ['=', 'E-mail'],
+    ['mail_notification_enabled', 'bool', 'Envoyer un e-mail quand un téléchargement est terminé'],
+    ['mail_notification_email', 'text', 'Adresse de destination', { dep: 'mail_notification_enabled' }],
+    ['mail_notification_sender', 'text', 'Adresse d\'expédition', { dep: 'mail_notification_enabled' }],
+    ['mail_notification_smtp', 'text', 'Serveur SMTP', { dep: 'mail_notification_enabled', hint: 'ex. smtp.gmail.com' }],
+    ['mail_notification_encryption_type', 'select', 'Chiffrement', { dep: 'mail_notification_enabled', options: [['SMTPS', 'SSL/TLS (port 465)'], ['STARTTLS', 'STARTTLS (port 587)'], ['None', 'Aucun (port 25)']] }],
+    ['mail_notification_auth_enabled', 'bool', 'Le serveur demande une authentification', { dep: 'mail_notification_enabled' }],
+    ['mail_notification_username', 'text', 'Identifiant', { dep: 'mail_notification_auth_enabled' }],
+    ['mail_notification_password', 'password', 'Mot de passe', { dep: 'mail_notification_auth_enabled', hint: 'laisser vide pour ne pas le changer' }],
+    ['=', 'Notification web (webhook)'],
+    ['#', 'Envoie un message à Discord, Slack, Mattermost, ntfy, Home Assistant… Pratique pour être prévenu de chaque nouvel épisode trouvé par un abonnement RSS.'],
+    ['webhook', 'webhook', 'Adresse du webhook'],
+  ]],
   ['ui', 'Interface', [
     ['#', 'L\'interface web est sur le port 8085, fixé par le paquet QNAP.'],
+    ['use_https', 'bool', 'Chiffrer l\'interface web (HTTPS) avec le certificat du NAS'],
+    ['#', 'Après activation, l\'adresse devient https://IP-DU-NAS:8085. Si le certificat du NAS est auto-signé, le navigateur affiche un avertissement à accepter une fois.'],
     ['!passwd', 'Changer le mot de passe…'],
     ['!advanced', 'Tous les autres réglages (interface classique)…'],
   ]],
 ];
+// Notification web : programme externe de qBittorrent pointant vers notify.sh du paquet
+const isOurHook = (prog) => /\/notify\.sh" "/.test(prog || '');
+function webhookState(p) {
+  const m = (prog) => (/\/notify\.sh" "([^"]+)"/.exec(prog || '') || [])[1] || '';
+  const a = p.autorun_on_torrent_added_enabled && isOurHook(p.autorun_on_torrent_added_program);
+  const f = p.autorun_enabled && isOurHook(p.autorun_program);
+  return {
+    url: (a && m(p.autorun_on_torrent_added_program)) || (f && m(p.autorun_program)) || '',
+    added: a, finished: f,
+    foreign: (p.autorun_on_torrent_added_enabled && p.autorun_on_torrent_added_program && !isOurHook(p.autorun_on_torrent_added_program))
+      || (p.autorun_enabled && p.autorun_program && !isOurHook(p.autorun_program)),
+  };
+}
 const DAYS = [[0, 'Tous les jours'], [1, 'En semaine'], [2, 'Le week-end'], [3, 'Lundi'], [4, 'Mardi'], [5, 'Mercredi'], [6, 'Jeudi'], [7, 'Vendredi'], [8, 'Samedi'], [9, 'Dimanche']];
 const pad2 = (n) => String(n).padStart(2, '0');
 function settingHTML(f, p) {
@@ -1278,6 +1308,16 @@ function settingHTML(f, p) {
   if (k[0] === '!') return `<div><button type="button" class="btn" data-sact="${k.slice(1)}">${esc(type)}</button></div>`;
   const dep = o.dep ? ` data-dep="${o.dep}"` : '', hint = o.hint ? `<small>${esc(o.hint)}</small>` : '';
   if (type === 'bool') return `<label class="chk"${dep}><input type="checkbox" data-k="${k}" ${p[k] ? 'checked' : ''}> ${esc(label)}</label>`;
+  if (type === 'text' || type === 'password') return `<div class="srow"${dep}><label for="s-${k}">${esc(label)}${hint}</label><input class="field" id="s-${k}" data-k="${k}"
+    type="${type}" value="${type === 'password' ? '' : esc(p[k] || '')}" ${type === 'password' ? `placeholder="${p[k] ? '•••••• (inchangé)' : ''}" autocomplete="new-password"` : ''} spellcheck="false"></div>`;
+  if (type === 'webhook') {
+    const w = webhookState(p);
+    return `<div class="srow full"><label for="s-webhook">${esc(label)}<small>laisser vide pour désactiver</small></label>
+      <input class="field" id="s-webhook" data-k="webhook" value="${esc(w.url)}" placeholder="https://…" spellcheck="false"></div>
+      <label class="chk"><input type="checkbox" data-wh="added" ${!w.url || w.added ? 'checked' : ''}> À chaque torrent ajouté (nouvel épisode d'un abonnement RSS, etc.)</label>
+      <label class="chk"><input type="checkbox" data-wh="finished" ${w.finished ? 'checked' : ''}> Quand un téléchargement est terminé</label>
+      ${w.foreign ? '<p>Un autre programme externe est configuré dans qBittorrent : il sera remplacé si vous activez la notification web pour le même évènement.</p>' : ''}`;
+  }
   if (type === 'path') return `<div class="srow full"${dep}><label for="s-${k}">${esc(label)}</label><input class="field" id="s-${k}" data-k="${k}" value="${esc(normalize(p[k] || ''))}" spellcheck="false"></div>`;
   if (type === 'select') return `<div class="srow"${dep}><label for="s-${k}">${esc(label)}${hint}</label><select class="field" id="s-${k}" data-k="${k}">${o.options.map(([v, l]) => `<option value="${v}" ${String(p[k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
   if (type === 'schedule') return `<div class="srow"${dep}><label>${esc(label)}</label><div class="sched" data-k="schedule">
@@ -1302,16 +1342,24 @@ async function settingsDialog(tab = 'dl') {
         bd.querySelectorAll('[data-stab]').forEach((b) => b.classList.toggle('on', b.dataset.stab === id));
         bd.querySelectorAll('[data-spane]').forEach((s) => (s.hidden = s.dataset.spane !== id));
       };
-      const deps = () => bd.querySelectorAll('[data-dep]').forEach((el) => {
-        const on = bd.querySelector(`[data-k="${el.dataset.dep}"]`).checked;
+      // Deux passes : un réglage peut dépendre d'un autre qui dépend lui-même d'un troisième
+      const deps = () => [0, 1].forEach(() => bd.querySelectorAll('[data-dep]').forEach((el) => {
+        const src = bd.querySelector(`[data-k="${el.dataset.dep}"]`);
+        const on = src.checked && !src.disabled;
         el.classList.toggle('off', !on);
         el.querySelectorAll('input, select').forEach((i) => (i.disabled = !on));
-      });
+      }));
       bd.addEventListener('click', (e) => {
         const t = e.target.closest('[data-stab]'); if (t) show(t.dataset.stab);
         const a = e.target.closest('[data-sact]'); if (a) { if (a.dataset.sact === 'passwd') passwordDialog(false); else location.href = 'classic.html#reglages'; }
       });
       bd.addEventListener('change', deps);
+      // HTTPS : impossible sans certificat (préparé par le paquet au démarrage)
+      if (!p.web_ui_https_cert_path || !p.web_ui_https_key_path) {
+        const h = bd.querySelector('[data-k=use_https]');
+        h.disabled = true;
+        h.closest('label').insertAdjacentHTML('afterend', '<p>Aucun certificat disponible : redémarrez qBittorrent depuis l\'App Center pour qu\'il prépare celui du NAS.</p>');
+      }
       show(tab); deps();
       bd.querySelector('[data-ok]').focus();
     },
@@ -1328,6 +1376,21 @@ async function settingsDialog(tab = 'dl') {
         }
         const [, type, label, o = {}] = types[k];
         let v;
+        if (type === 'webhook') {
+          const url = el.value.trim();
+          if (url && !/^https?:\/\/[^\s"]+$/.test(url)) { err('« Adresse du webhook » : adresse web invalide (https://…).'); show(bd, k); return false; }
+          const root = (p.alternative_webui_path || '').replace(/\/webui\/?$/, '');
+          if (url && !root) { err('Dossier du paquet introuvable : la notification web ne peut pas être configurée.'); return false; }
+          const prog = (ev) => `"${root}/notify.sh" "${url}" ${ev} "%N" "%D" "%Z"`;
+          for (const [ev, en, pr] of [['added', 'autorun_on_torrent_added_enabled', 'autorun_on_torrent_added_program'], ['finished', 'autorun_enabled', 'autorun_program']]) {
+            const want = !!url && bd.querySelector(`[data-wh="${ev}"]`).checked;
+            if (want) { if (!p[en]) diff[en] = true; if (p[pr] !== prog(ev)) diff[pr] = prog(ev); }
+            else if (p[en] && isOurHook(p[pr])) diff[en] = false;
+          }
+          continue;
+        }
+        if (type === 'text') { v = el.value.trim(); if (el.disabled || v === (p[k] || '')) continue; diff[k] = v; continue; }
+        if (type === 'password') { if (!el.disabled && el.value) diff[k] = el.value; continue; }
         if (type === 'bool') v = el.checked;
         else if (type === 'select') v = typeof p[k] === 'number' ? Number(el.value) : el.value;
         else if (type === 'path') {
@@ -1354,6 +1417,12 @@ async function settingsDialog(tab = 'dl') {
       const nb = Object.keys(diff).length;
       toast(`Réglages enregistrés (${nb} modification${nb > 1 ? 's' : ''})`);
       if (state.view === 'rss') loadRss();
+      // Passage HTTP <-> HTTPS : qBittorrent redémarre son serveur web sur le nouveau protocole
+      if ('use_https' in diff) {
+        toast(diff.use_https ? 'HTTPS activé : ouverture de l\'adresse sécurisée…' : 'HTTPS désactivé : retour en HTTP…');
+        setTimeout(() => { location.href = (diff.use_https ? 'https:' : 'http:') + '//' + location.host + '/'; }, 1500);
+        return;
+      }
       setTimeout(poll, 500);
     },
   });
@@ -1363,6 +1432,39 @@ async function settingsDialog(tab = 'dl') {
     bd.querySelector(`[data-stab="${sec.dataset.spane}"]`).click();
     bd.querySelector(`[data-k="${key}"]`).focus();
   }
+}
+
+/* ---------- Espace disque ---------- */
+async function freeSpace(path) {
+  try {
+    const r = await api('app/getFreeSpaceAtPath?path=' + encodeURIComponent(path));
+    if (!r.ok) return null;
+    const n = Number((await r.text()).trim());
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  } catch (_) { return null; }
+}
+// Taille totale d'un fichier .torrent (lecture minimale du format bencode)
+async function torrentSize(file) {
+  try {
+    const b = new Uint8Array(await file.arrayBuffer()), td = new TextDecoder();
+    let i = 0;
+    const num = (end) => { const j = i; while (b[i] !== end) i++; const n = Number(td.decode(b.subarray(j, i))); i++; return n; };
+    const dec = () => {
+      const c = b[i];
+      if (c === 0x69) { i++; return num(0x65); }                                       // i…e
+      if (c === 0x6c) { i++; const a = []; while (b[i] !== 0x65) a.push(dec()); i++; return a; }
+      if (c === 0x64) { i++; const o = {}; while (b[i] !== 0x65) { const k = td.decode(dec()); o[k] = dec(); } i++; return o; }
+      const len = num(0x3a); const v = b.subarray(i, i + len); i += len; return v;        // longueur:octets
+    };
+    const info = dec().info || {};
+    if (typeof info.length === 'number') return info.length;
+    return (info.files || []).reduce((a, f) => a + (f.length || 0), 0);
+  } catch (_) { return 0; }
+}
+function freeHTML() {
+  if (state.free == null) return '';
+  const cls = state.free < 5 * 2 ** 30 ? 'err' : state.free < 20 * 2 ** 30 ? 'wait' : 'done';
+  return `<span class="st ${cls}" title="Espace libre dans le dossier de téléchargement par défaut">Espace libre : ${fmtSize(state.free)}</span>`;
 }
 
 function openAddDialog({ files = [], nas = [], magnet = false }) {
@@ -1378,11 +1480,26 @@ function openAddDialog({ files = [], nas = [], magnet = false }) {
     body: `${magnet ? `<label>Liens magnet ou adresses de fichiers .torrent (un par ligne)<textarea id="mg" rows="5" placeholder="magnet:?xt=urn:btih:…"></textarea></label>` : `<ul class="addlist">${items}</ul>`}
       <div class="dest">${I.folder(28, isVirtual(dest))}<div style="flex:1;min-width:0;display:grid;gap:4px"><small>Enregistrer dans</small>
         <input class="field" id="destp" value="${esc(dest)}" spellcheck="false">
-        ${normalize(state.defaultPath) !== dest ? `<small><a href="#" id="usedef" style="color:var(--blue)">Utiliser le dossier par défaut (${esc(relPath(state.defaultPath))})</a></small>` : ''}</div></div>
+        ${normalize(state.defaultPath) !== dest ? `<small><a href="#" id="usedef" style="color:var(--blue)">Utiliser le dossier par défaut (${esc(relPath(state.defaultPath))})</a></small>` : ''}
+        <small id="space" aria-live="polite"></small></div></div>
       <label class="chk"><input type="checkbox" id="startnow" ${store.get('startNow', true) ? 'checked' : ''}> Démarrer le téléchargement immédiatement</label>`,
     onOpen: (bd) => {
-      const d = bd.querySelector('#usedef');
-      if (d) d.onclick = (e) => { e.preventDefault(); bd.querySelector('#destp').value = state.defaultPath; };
+      const d = bd.querySelector('#usedef'), destIn = bd.querySelector('#destp');
+      if (d) d.onclick = (e) => { e.preventDefault(); destIn.value = state.defaultPath; checkSpace(); };
+      // Espace libre à destination, comparé à la taille des .torrent venant du PC
+      const need = Promise.all(files.map(torrentSize)).then((l) => l.reduce((a, b) => a + b, 0));
+      let tm;
+      const checkSpace = async () => {
+        const free = await freeSpace(destIn.value.trim() || state.defaultPath), total = await need;
+        const el = bd.querySelector('#space'), ok = bd.querySelector('[data-ok]');
+        if (free === null) { el.textContent = ''; return; }
+        const short = total > 0 && total > free, low = free < 5 * 2 ** 30;
+        el.innerHTML = `Espace libre : <b>${fmtSize(free)}</b>${total ? ` · taille des torrents : <b>${fmtSize(total)}</b>` : ''}`
+          + (short ? ' — <b style="color:var(--red)">pas assez d\'espace libre</b>' : low ? ' — <b style="color:var(--orange)">espace presque plein</b>' : '');
+        ok.textContent = short ? 'Ajouter quand même' : 'Ajouter';
+      };
+      destIn.addEventListener('input', () => { clearTimeout(tm); tm = setTimeout(checkSpace, 400); });
+      checkSpace();
     },
     onOk: async (bd, err) => {
       const dest = bd.querySelector('#destp').value.trim().replace(/\/+$/, '');
@@ -1627,6 +1744,7 @@ async function poll() {
     $('#spd-dl').textContent = '↓ ' + fmtSpeed(tr.dl_info_speed);
     $('#spd-up').textContent = '↑ ' + fmtSpeed(tr.up_info_speed);
     state.conn = tr;
+    if (!state.freeAt || Date.now() - state.freeAt > 30000) { state.freeAt = Date.now(); freeSpace(state.defaultPath).then((f) => { state.free = f; }); }
     renderFilters();
     if (state.view === 'torrents') {
       const before = state.sel.size;

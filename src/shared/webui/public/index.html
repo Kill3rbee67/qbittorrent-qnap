@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -25,6 +26,9 @@
   .first { font-size:12.5px; color:var(--muted); }
   .first summary { cursor:pointer; color:var(--blue); width:max-content; }
   .first[open] summary { margin-bottom:6px; }
+  .warn { margin:0 26px 22px; padding:10px 12px; border-radius:6px; font-size:12.5px; line-height:1.45; background:#fff6e8; border:1px solid #f0cf9f; color:#7a4b0c; }
+  .warn.bad { background:#fdecea; border-color:#f1b5ad; color:#8e2318; }
+  .warn b { color:inherit; }
   .err { min-height:18px; margin:0; color:#c0392b; font-size:12.5px; }
 </style>
 </head>
@@ -42,8 +46,20 @@
       <details class="first"><summary>Première connexion ?</summary>
         Utilisateur <b>admin</b>, mot de passe <b>adminadmin</b>. Vous devrez ensuite choisir votre propre mot de passe.</details>
     </form>
+    <p class="warn" id="warn">Sécurité : le mot de passe initial <b>adminadmin</b> est public. Changez-le dès la première connexion et n'ouvrez pas cette page sur Internet (utilisez plutôt un VPN).</p>
   </div>
 <script>
+// Accès depuis Internet (adresse non locale) : avertissement renforcé
+(function () {
+  const h = location.hostname;
+  const local = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|\[?::1\]?$|\[?f[cd][0-9a-f]{2}:|\[?fe80:)/i.test(h) || /\.(local|lan|home|internal)$/i.test(h) || !/[.:]/.test(h);
+  if (local) return;
+  const w = document.getElementById('warn');
+  w.className = 'warn bad';
+  w.innerHTML = 'Attention : vous accédez à qBittorrent <b>depuis Internet</b>' + (location.protocol === 'http:' ? ', <b>sans chiffrement</b>' : '')
+    + '. Le mot de passe initial adminadmin est public : si ce n\'est pas déjà fait, changez-le immédiatement, et préférez un accès par VPN.'
+    + (location.protocol === 'http:' ? ' Activez au moins HTTPS (Outils › Réglages › Interface).' : '');
+})();
 document.getElementById('f').addEventListener('submit', async (e) => {
   e.preventDefault();
   const b = document.getElementById('b'), err = document.getElementById('err');

@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # Construit les paquets QPKG qBittorrent pour QNAP.
 #
 #   ./build.sh            -> build/qBittorrent_<version>_x86_64.qpkg  (Intel / AMD)
 #                            build/qBittorrent_<version>_arm_64.qpkg  (ARM 64 bits, expérimental)
+#                            build/PROVENANCE.txt (versions et empreintes de tout ce qui est embarqué)
+#   ./build.sh --check    -> télécharge et vérifie seulement les binaires amont (empreintes SHA-256)
 #
 # Dépendances : bash, git, curl, rsync, gcc, tar, gzip, sha256sum, md5sum.
 # Le binaire qBittorrent-nox et l'outil QDK de QNAP sont téléchargés dans .cache/
@@ -41,6 +44,34 @@ step "Construction de qBittorrent $VERSION (binaire $QBT_RELEASE)"
 
 mkdir -p "$CACHE/bin" "$OUT"
 
+# Binaires qBittorrent-nox (un par architecture), vérifiés par leur empreinte SHA-256
+fetch_binaries() {
+    for a in $ARCHS; do
+        arch="${a%%:*}"; name="${a##*:}"
+        BIN="$CACHE/qbittorrent-nox-$QBT_RELEASE-$arch"
+        if [ ! -f "$BIN" ]; then
+            step "Téléchargement de qbittorrent-nox ($QBT_RELEASE, $arch)"
+            curl -fsSL --retry 3 -o "$BIN.part" \
+                "https://github.com/userdocs/qbittorrent-nox-static/releases/download/$QBT_RELEASE/$name-qbittorrent-nox"
+            mv "$BIN.part" "$BIN"
+        fi
+        var="QBT_SHA256_$(echo "$arch" | tr 'a-z' 'A-Z')"
+        echo "${!var}  $BIN" | sha256sum -c --quiet - \
+            || { rm -f "$BIN"; die "empreinte SHA-256 du binaire $arch incorrecte (fichier supprimé, relancez le build)"; }
+    done
+}
+
+# Mode vérification seule (CI) : empreintes des binaires amont, sans construire
+if [ "${1:-}" = "--check" ]; then
+    fetch_binaries
+    for a in $ARCHS; do
+        arch="${a%%:*}"
+        echo "OK  $arch  $(sha256sum "$CACHE/qbittorrent-nox-$QBT_RELEASE-$arch" | cut -d' ' -f1)  ($QBT_RELEASE)"
+    done
+    exit 0
+fi
+fetch_binaries
+
 # 1. QDK
 if [ ! -x "$CACHE/QDK/shared/bin/qbuild" ]; then
     step "Récupération de QDK $QDK_TAG"
@@ -64,21 +95,6 @@ if [ ! -d "$WEBUI_SRC/src/webui/www/public/images" ]; then
 fi
 LRELEASE="$(command -v lrelease || command -v lrelease-qt6 || ls /usr/lib/qt6/bin/lrelease 2>/dev/null || true)"
 
-# 2. Binaires qBittorrent-nox (un par architecture)
-for a in $ARCHS; do
-    arch="${a%%:*}"; name="${a##*:}"
-    BIN="$CACHE/qbittorrent-nox-$QBT_RELEASE-$arch"
-    if [ ! -f "$BIN" ]; then
-        step "Téléchargement de qbittorrent-nox ($QBT_RELEASE, $arch)"
-        curl -fsSL --retry 3 -o "$BIN.part" \
-            "https://github.com/userdocs/qbittorrent-nox-static/releases/download/$QBT_RELEASE/$name-qbittorrent-nox"
-        mv "$BIN.part" "$BIN"
-    fi
-    var="QBT_SHA256_$(echo "$arch" | tr 'a-z' 'A-Z')"
-    echo "${!var}  $BIN" | sha256sum -c --quiet - \
-        || { rm -f "$BIN"; die "empreinte SHA-256 du binaire $arch incorrecte (fichier supprimé, relancez le build)"; }
-done
-
 # 3. Préparation de l'arborescence du paquet
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -90,7 +106,7 @@ for a in $ARCHS; do
     cp "$CACHE/qbittorrent-nox-$QBT_RELEASE-$arch" "$WORK/pkg/$arch/qbittorrent-nox"
     chmod 755 "$WORK/pkg/$arch/qbittorrent-nox"
 done
-chmod 755 "$WORK/pkg/shared/qBittorrent.sh"
+chmod 755 "$WORK/pkg/shared/qBittorrent.sh" "$WORK/pkg/shared/notify.sh"
 
 # Version du paquet affichée dans « À propos » de l'interface explorateur
 UI="$WORK/pkg/shared/webui"
@@ -124,7 +140,7 @@ step "Assemblage avec qbuild"
     "$CACHE/QDK/shared/bin/qbuild" --root "$WORK/pkg" )
 
 # 5. Résultat : un paquet par architecture
-rm -f "$OUT"/qBittorrent_*.qpkg*
+rm -f "$OUT"/qBittorrent_*.qpkg* "$OUT/PROVENANCE.txt"
 for a in $ARCHS; do
     arch="${a%%:*}"
     QPKG="$WORK/pkg/build/qBittorrent_${VERSION}_${arch}.qpkg"
@@ -138,3 +154,22 @@ for a in $ARCHS; do
     step "Terminé : build/$(basename "$QPKG") ($((SIZE / 1048576)) Mo)"
     cat "$OUT/$(basename "$QPKG").sha256"
 done
+
+# 6. Provenance : ce qui a servi à construire ces paquets (traçabilité des releases)
+{
+    echo "qBittorrent pour QNAP $VERSION"
+    echo "Source du paquet : $(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo inconnue)$(git -C "$ROOT" diff --quiet 2>/dev/null || echo ' (modifications locales)')"
+    echo "Construit le : $(date -u '+%Y-%m-%d %H:%M UTC')"
+    echo
+    echo "Binaires qbittorrent-nox : https://github.com/userdocs/qbittorrent-nox-static/releases/tag/$QBT_RELEASE"
+    for a in $ARCHS; do
+        arch="${a%%:*}"
+        echo "  $arch  $(sha256sum "$CACHE/qbittorrent-nox-$QBT_RELEASE-$arch" | cut -d' ' -f1)"
+    done
+    echo "Interface web d'origine : qBittorrent $QBT_WEBUI_TAG ($(git -C "$WEBUI_SRC" rev-parse HEAD))"
+    echo "QDK : $QDK_TAG ($(git -C "$CACHE/QDK" rev-parse HEAD))"
+    echo
+    echo "Paquets (SHA-256) :"
+    ( cd "$OUT" && sha256sum qBittorrent_*.qpkg | sed 's/^/  /' )
+} > "$OUT/PROVENANCE.txt"
+cat "$OUT/PROVENANCE.txt"

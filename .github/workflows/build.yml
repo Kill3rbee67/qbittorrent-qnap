@@ -1,6 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
 name: Build
 
-# - Chaque push et pull request : construction du paquet (artefact téléchargeable).
+# - Chaque push et pull request : vérification des empreintes des binaires amont,
+#   construction des paquets, test de mise à jour depuis la dernière release.
+#   Si une étape échoue, rien n'est publié.
 # - Push sur main avec une nouvelle valeur de QPKG_VER (src/qpkg.cfg) :
 #   création automatique du tag v<version> et de la release avec le .qpkg.
 on:
@@ -42,8 +45,16 @@ jobs:
             echo "Le tag $GITHUB_REF_NAME ne correspond pas à QPKG_VER=$VERSION (src/qpkg.cfg)"; exit 1
           fi
 
-      - name: Construire le QPKG
+      - name: Vérifier les empreintes des binaires amont
+        run: ./build.sh --check
+
+      - name: Construire les paquets
         run: ./build.sh
+
+      - name: Test de mise à jour depuis la dernière release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: tests/upgrade-test.sh build/qBittorrent_${{ steps.v.outputs.version }}_x86_64.qpkg
 
       - uses: actions/upload-artifact@v4
         with:
@@ -67,11 +78,12 @@ jobs:
             1. Téléchargez ci-dessous le paquet de votre processeur : `qBittorrent_${{ steps.v.outputs.version }}_x86_64.qpkg` (Intel / AMD) ou `qBittorrent_${{ steps.v.outputs.version }}_arm_64.qpkg` (ARM 64 bits, expérimental).
             2. App Center › Paramètres › Général : cochez « Autoriser l'installation d'applications sans signature numérique valide ».
             3. App Center › **Installation manuelle** › choisissez le fichier.
-            4. Ouvrez `http://IP-DU-NAS:8085` et connectez-vous avec **admin / adminadmin**, puis choisissez votre mot de passe.
+            4. Ouvrez `http://IP-DU-NAS:8085` et connectez-vous avec **admin / adminadmin** (mot de passe initial public), puis choisissez votre mot de passe. N'exposez pas ce port sur Internet.
 
             Plus simple : ajoutez la source d'applications `https://raw.githubusercontent.com/${{ github.repository }}/main/repository.xml` dans l'App Center (Paramètres › Source d'applications) pour installer en un clic et recevoir les mises à jour (en test).
 
-            Mise à jour : installez par-dessus la version précédente, vos torrents et votre mot de passe sont conservés.
+            Mise à jour : installez par-dessus la version précédente, vos torrents, abonnements, réglages et votre mot de passe sont conservés (vérifié automatiquement à chaque release).
+            Provenance et empreintes de tout ce qui est embarqué : `PROVENANCE.txt` ci-dessous.
             Détails des changements : [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
 
       # Source d'applications de l'App Center : pointe vers la release qui vient

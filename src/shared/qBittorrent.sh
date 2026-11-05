@@ -1,5 +1,6 @@
 #!/bin/sh
-# Script de service QTS pour qBittorrent-nox
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Script de service QTS pour qBittorrent-nox (démarrage, arrêt, configuration).
 CONF=/etc/config/qpkg.conf
 QPKG_NAME="qBittorrent"
 QPKG_ROOT=`/sbin/getcfg $QPKG_NAME Install_Path -f ${CONF}`
@@ -9,6 +10,7 @@ PROFILE="$QPKG_ROOT/profile"
 CONFIG_FILE="$PROFILE/qBittorrent/config/qBittorrent.conf"
 LOG="$QPKG_ROOT/qbittorrent.log"
 WEBUI_DIR="$QPKG_ROOT/webui"
+SSL_DIR="$QPKG_ROOT/ssl"
 PIDFILE="/var/run/qBittorrent.pid"
 WEBUI_PORT=8085
 # Port BitTorrent par défaut. Pas 6881 : c'est celui de Download Station, et si
@@ -73,21 +75,49 @@ fix_port() {
     echo "`date '+%F %T'` Port BitTorrent $CUR déjà utilisé par un autre programme (Download Station ?) : passage sur le port $NEW" >> "$LOG"
 }
 
-# Mot de passe initial de l'interface web : admin / adminadmin
-# (empreinte PBKDF2-SHA512 au format qBittorrent). L'interface oblige à le
+# Mot de passe initial de l'interface web : admin / adminadmin (empreinte
+# PBKDF2-SHA512 au format qBittorrent). Il est public : l'interface oblige à le
 # changer à la première connexion. Un mot de passe déjà défini n'est jamais écrasé.
 DEFAULT_PW_HASH='@ByteArray(hErOMdZerJO9Vg6ilg9h1g==:v6WC5LuduPnik8N0Rd/5HOgk0Sh3NhyOdrs+wrhIOvzaWSvbAfXZGp3w3dCHWicInVAPDME3QMtGssVUR9k9ww==)'
+
+# Certificat HTTPS de l'interface web : celui du NAS (QTS > Sécurité > Certificat,
+# y compris Let's Encrypt), recopié à chaque démarrage pour suivre ses
+# renouvellements ; à défaut, un certificat auto-signé. HTTPS reste désactivé
+# tant que l'utilisateur ne l'active pas (Outils > Réglages > Interface).
+prepare_ssl() {
+    mkdir -p "$SSL_DIR" && chmod 700 "$SSL_DIR"
+    if [ -r /etc/stunnel/stunnel.pem ]; then
+        awk '/-----BEGIN .*PRIVATE KEY-----/,/-----END .*PRIVATE KEY-----/' /etc/stunnel/stunnel.pem > "$SSL_DIR/key.pem.tmp"
+        { awk '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/' /etc/stunnel/stunnel.pem
+          [ -r /etc/stunnel/uca.pem ] && awk '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/' /etc/stunnel/uca.pem
+        } > "$SSL_DIR/cert.pem.tmp"
+        if [ -s "$SSL_DIR/key.pem.tmp" ] && [ -s "$SSL_DIR/cert.pem.tmp" ]; then
+            mv "$SSL_DIR/key.pem.tmp" "$SSL_DIR/key.pem"; mv "$SSL_DIR/cert.pem.tmp" "$SSL_DIR/cert.pem"
+        fi
+        rm -f "$SSL_DIR/key.pem.tmp" "$SSL_DIR/cert.pem.tmp"
+    fi
+    if [ ! -s "$SSL_DIR/cert.pem" ] && command -v openssl >/dev/null 2>&1; then
+        openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=`hostname`" \
+            -keyout "$SSL_DIR/key.pem" -out "$SSL_DIR/cert.pem" >/dev/null 2>&1
+    fi
+    chmod 600 "$SSL_DIR"/*.pem 2>/dev/null
+    return 0
+}
 
 # Complète la section [WebUI] (format qBittorrent 5.x) :
 #  - interface « explorateur de fichiers », activée une première fois (y compris
 #    sur une installation existante) ; si l'utilisateur revient ensuite à
 #    l'interface classique, ce choix est respecté ;
+#  - chemins du certificat HTTPS, s'ils ne sont pas déjà définis ;
 #  - mot de passe initial, uniquement si aucun mot de passe n'est défini.
 ensure_webui() {
     [ -d "$WEBUI_DIR" ] || return 0
-    awk -v dir="$WEBUI_DIR" -v pw="$DEFAULT_PW_HASH" '
+    SSL_OK=0; [ -s "$SSL_DIR/cert.pem" ] && [ -s "$SSL_DIR/key.pem" ] && SSL_OK=1
+    awk -v dir="$WEBUI_DIR" -v pw="$DEFAULT_PW_HASH" -v ssl="$SSL_DIR" -v sslok="$SSL_OK" '
         function add() {
             if (!hasroot) { print "AlternativeUIEnabled=true"; print "RootFolder=" dir; hasroot = 1 }
+            if (sslok && !hascert) { print "HTTPS\\CertificatePath=" ssl "/cert.pem"; hascert = 1 }
+            if (sslok && !haskey) { print "HTTPS\\KeyPath=" ssl "/key.pem"; haskey = 1 }
             if (!haspw) { print "Password_PBKDF2=\"" pw "\""; haspw = 1 }
         }
         /^\[/ {
@@ -99,6 +129,10 @@ ensure_webui() {
             # Met à jour le chemin si le paquet a été déplacé sur un autre volume
             if ($0 ~ /\/qBittorrent\/webui$/) $0 = "RootFolder=" dir
         }
+        insec && /^HTTPS\\CertificatePath=./ { hascert = 1 }
+        insec && /^HTTPS\\KeyPath=./ { haskey = 1 }
+        # Lignes vides laissées par qBittorrent : supprimées puis réécrites
+        insec && /^HTTPS\\(CertificatePath|KeyPath)=$/ { next }
         insec && /^Password_PBKDF2=/ { haspw = 1 }
         { print }
         END {
@@ -126,6 +160,7 @@ case "$1" in
     fi
 
     seed_config
+    prepare_ssl
     ensure_webui
     fix_port
     # Évite un journal qui grossit indéfiniment
