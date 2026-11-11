@@ -288,6 +288,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
 <div class="toast" id="toast" role="status"></div>
 
 <script src="explorer/torrents.js?v=__QPKG_VER__"></script>
+<script src="explorer/reglages.js?v=__QPKG_VER__"></script>
 <script>
 'use strict';
 // Racine de navigation : /share sur un QNAP (modifiable avec ?root=/chemin pour les tests)
@@ -1086,7 +1087,7 @@ function menus() {
     ['Affichage', [['vdl', 'Téléchargements'], ['vrss', 'Abonnements RSS', I.rss()], '-', ['log', 'Journal…'], ['stats', 'Statistiques…'],
       '-', ['titlespeed', 'Vitesse dans la barre de titre', null, false, !!store.get('titleSpeed', false)]]],
     ['Outils', [['settings', 'Réglages…'], ['alt', 'Limites de vitesse alternatives', null, false, !!state.altSpeed], '-',
-      ['passwd', 'Mot de passe…'], ['advanced', 'Réglages avancés (interface classique)…']]],
+      ['passwd', 'Mot de passe…']]],
     ['Aide', [['about', 'À propos…'], ['guide', 'Guide d\'utilisation'], ['issue', 'Signaler un problème']]],
   ];
 }
@@ -1358,6 +1359,7 @@ const SETTINGS = [
     ['!advanced', 'Tous les autres réglages (interface classique)…'],
   ]],
 ];
+mergeSettings(SETTINGS); // réglages complémentaires : explorer/reglages.js
 // Notification web : programme externe de qBittorrent pointant vers notify.sh du paquet
 // Accès par le proxy de QTS (…/qbittorrent/, myQNAPcloud Link) plutôt que par le port 8085
 const VIA_QTS = location.pathname.replace(/[^/]*$/, '') !== '/';
@@ -1392,13 +1394,17 @@ function settingHTML(f, p) {
       <label class="chk"><input type="checkbox" data-wh="finished" ${w.finished ? 'checked' : ''}> Quand un téléchargement est terminé</label>
       ${w.foreign ? '<p>Un autre programme externe est configuré dans qBittorrent : il sera remplacé si vous activez la notification web pour le même évènement.</p>' : ''}`;
   }
+  if (type === 'ro') return `<div class="srow"><label>${esc(label)}</label><div class="muted" style="padding:6px 0">${esc(o.fmt ? o.fmt(p) : String(p[k] ?? '—'))}</div></div>`;
+  if (type === 'area') return `<div class="srow full"${dep}><label for="s-${k}">${esc(label)}${hint}</label><textarea class="field" id="s-${k}" data-k="${k}" rows="4" spellcheck="false">${esc(p[k] || '')}</textarea></div>`;
+  if (type === 'watch') return watchHTML(p);
+  if (type === 'iface') return `<div class="srow"${dep}><label for="s-${k}">${esc(label)}${hint}</label><select class="field" id="s-${k}" data-k="${k}"><option value="${esc(p[k] || '')}">${esc(p[k] || 'Toutes les interfaces')}</option></select></div>`;
   if (type === 'path') return `<div class="srow full"${dep}><label for="s-${k}">${esc(label)}</label><input class="field" id="s-${k}" data-k="${k}" value="${esc(normalize(p[k] || ''))}" spellcheck="false"></div>`;
   if (type === 'select') return `<div class="srow"${dep}><label for="s-${k}">${esc(label)}${hint}</label><select class="field" id="s-${k}" data-k="${k}">${o.options.map(([v, l]) => `<option value="${v}" ${String(p[k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
   if (type === 'schedule') return `<div class="srow"${dep}><label>${esc(label)}</label><div class="sched" data-k="schedule">
       de <input class="field" type="time" data-part="from" value="${pad2(p.schedule_from_hour)}:${pad2(p.schedule_from_min)}">
       à <input class="field" type="time" data-part="to" value="${pad2(p.schedule_to_hour)}:${pad2(p.schedule_to_min)}">
       <select class="field" data-part="days">${DAYS.map(([v, l]) => `<option value="${v}" ${p.scheduler_days === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>`;
-  const val = type === 'rate' ? Math.round((p[k] || 0) / 1024) : p[k];
+  const val = type === 'rate' ? Math.round((p[k] || 0) / 1024) : o.scale ? Math.round((p[k] || 0) / o.scale) : p[k];
   const unit = type === 'rate' ? 'Kio/s' : '';
   return `<div class="srow"${dep}><label for="s-${k}">${esc(label)}${hint}</label><div class="unit"><input class="field" id="s-${k}" data-k="${k}" type="number"
     ${type === 'float' ? 'step="0.1"' : 'step="1"'} ${o.min !== undefined ? `min="${o.min}"` : ''} ${o.max !== undefined ? `max="${o.max}"` : ''} value="${esc(val ?? '')}">${unit}</div></div>`;
@@ -1421,11 +1427,16 @@ async function settingsDialog(tab = 'dl') {
         const src = bd.querySelector(`[data-k="${el.dataset.dep}"]`);
         const on = src.checked && !src.disabled;
         el.classList.toggle('off', !on);
-        el.querySelectorAll('input, select').forEach((i) => (i.disabled = !on));
+        el.querySelectorAll('input, select, textarea').forEach((i) => (i.disabled = !on));
       }));
       bd.addEventListener('click', (e) => {
         const t = e.target.closest('[data-stab]'); if (t) show(t.dataset.stab);
-        const a = e.target.closest('[data-sact]'); if (a) { if (a.dataset.sact === 'passwd') passwordDialog(false); else location.href = 'classic.html#reglages'; }
+        const a = e.target.closest('[data-sact]');
+        if (a) {
+          if (a.dataset.sact === 'passwd') passwordDialog(false);
+          else if (a.dataset.sact === 'advanced') location.href = 'classic.html#reglages';
+          else settingsExtraAction(a.dataset.sact, bd, a);
+        }
       });
       bd.addEventListener('change', deps);
       // HTTPS : sans objet quand on passe par le proxy de QTS (il couperait cet accès)
@@ -1440,7 +1451,7 @@ async function settingsDialog(tab = 'dl') {
         h.disabled = true;
         h.closest('label').insertAdjacentHTML('afterend', '<p>Aucun certificat disponible : redémarrez qBittorrent depuis l\'App Center pour qu\'il prépare celui du NAS.</p>');
       }
-      show(tab); deps();
+      show(tab); deps(); fillIfaces(bd, p);
       bd.querySelector('[data-ok]').focus();
     },
     onOk: async (bd, err) => {
@@ -1456,6 +1467,13 @@ async function settingsDialog(tab = 'dl') {
         }
         const [, type, label, o = {}] = types[k];
         let v;
+        if (type === 'watch') {
+          try { v = readWatch(el); } catch (e) { err(e.message); show(bd, 'scan_dirs'); return false; }
+          if (!sameJSON(v, p.scan_dirs)) diff.scan_dirs = v;
+          continue;
+        }
+        if (type === 'area') { v = el.value.split(/\r?\n/).map((x) => x.trimEnd()).join('\n').trim(); if (el.disabled || v === (p[k] || '').trim()) continue; diff[k] = v; continue; }
+        if (type === 'iface') { if (el.value !== (p[k] || '')) diff[k] = el.value; continue; }
         if (type === 'webhook') {
           const url = el.value.trim();
           if (url && !/^https?:\/\/[^\s"]+$/.test(url)) { err('« Adresse du webhook » : adresse web invalide (https://…).'); show(bd, k); return false; }
@@ -1472,7 +1490,7 @@ async function settingsDialog(tab = 'dl') {
         if (type === 'text') { v = el.value.trim(); if (el.disabled || v === (p[k] || '')) continue; diff[k] = v; continue; }
         if (type === 'password') { if (!el.disabled && el.value) diff[k] = el.value; continue; }
         if (type === 'bool') v = el.checked;
-        else if (type === 'select') v = typeof p[k] === 'number' ? Number(el.value) : el.value;
+        else if (type === 'select') v = typeof p[k] === 'number' ? Number(el.value) : typeof p[k] === 'boolean' ? el.value === 'true' : el.value;
         else if (type === 'path') {
           v = el.value.trim().replace(/\/+$/, '');
           if (el.disabled) continue;
@@ -1485,7 +1503,7 @@ async function settingsDialog(tab = 'dl') {
           if (Number.isNaN(num) || (o.min !== undefined && num < o.min) || (o.max !== undefined && num > o.max)) {
             err(`« ${label} » : valeur invalide${o.min !== undefined ? ` (minimum ${o.min}${o.max !== undefined ? `, maximum ${o.max}` : ''})` : ''}.`); show(bd, k); return false;
           }
-          v = type === 'rate' ? num * 1024 : num;
+          v = type === 'rate' ? num * 1024 : o.scale ? num * o.scale : num;
         }
         if (v !== p[k]) diff[k] = v;
       }
