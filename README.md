@@ -248,6 +248,7 @@ src/icons/                      icônes de l'App Center
 src/package_routines            gabarit QDK (non modifié)
 build.sh                        construction des paquets
 tests/                          test de mise à jour et extraction d'un .qpkg
+docs/tests-manuels.md           tests à faire sur un vrai NAS avant une publication
 tools/make-repository.sh        génération de repository.xml (source d'applications)
 repository.xml                  source d'applications de l'App Center (mise à jour par la CI)
 assets/                         icônes affichées dans l'App Center
