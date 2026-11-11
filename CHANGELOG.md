@@ -18,6 +18,7 @@ Modifié
 Corrigé
 - Le début des noms de torrents pouvait être coupé quand la fenêtre était étroite ou que les colonnes étaient nombreuses.
 - Les états longs (« En attente de sources »…) sont tronqués proprement, avec le texte complet au survol.
+- Après une mise à jour, le journal se remplissait de « shell-init: error retrieving current directory » à chaque notification : qBittorrent est désormais lancé depuis le dossier du paquet.
 
 ## 5.3.4.0
 L'interface explorateur couvre désormais les fonctions de l'interface d'origine de qBittorrent 5.3 ; celle-ci reste disponible en secours (« ⇄ Interface classique »).
