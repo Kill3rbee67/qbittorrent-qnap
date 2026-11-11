@@ -18,6 +18,8 @@
 //   torrents/renameFile, torrents/renameFolder, torrents/addTrackers,
 //   torrents/editTracker, torrents/removeTrackers, torrents/reannounce,
 //   torrents/addPeers, transfer/banPeers.
+// removeTrackers, addWebSeeds et removeWebSeeds décodent chaque adresse (séparées
+// par « | ») : elles sont encodées une à une, comme dans l'interface d'origine.
 'use strict';
 
 /* ---------- Erreurs et presse-papiers ---------- */
@@ -95,13 +97,15 @@ function updateTitle() {
 }
 
 /* ---------- Tri de la liste ---------- */
+// Tri des colonnes Catégorie et Étiquettes : chaînes vides en dernier
 const SORT_STATE = ['downloading', 'forcedDL', 'metaDL', 'forcedMetaDL', 'stalledDL', 'queuedDL', 'checkingDL', 'checkingUP', 'checkingResumeData',
   'moving', 'uploading', 'forcedUP', 'stalledUP', 'queuedUP', 'stoppedDL', 'pausedDL', 'stoppedUP', 'pausedUP', 'error', 'missingFiles'];
 function torrentSorter() {
   const { k, d } = store.get('sort', { k: 'added_on', d: -1 });
   const val = (t) => k === 'state' ? SORT_STATE.indexOf(t.state)
     : k === 'eta' ? (t.progress >= 1 || isStopped(t) || !(t.eta >= 0) || t.eta >= 8640000 ? Infinity : t.eta)
-    : k === 'save_path' ? normalize(t.save_path) : t[k];
+    : k === 'save_path' ? normalize(t.save_path)
+    : k === 'category' || k === 'tags' ? (t[k] || '\uffff') : t[k];
   return (a, b) => {
     const x = val(a), y = val(b);
     const c = typeof x === 'string' || typeof y === 'string' ? coll.compare(String(x ?? ''), String(y ?? '')) : (x ?? 0) - (y ?? 0);
@@ -131,7 +135,7 @@ function torrentExtraItems(s) {
   const copy = [['copy:name', 'Nom'], ['copy:infohash_v1', 'Info hash v1'], ['copy:infohash_v2', 'Info hash v2'], ['copy:magnet_uri', 'Lien magnet'],
     ['copy:hash', 'ID du torrent'], ['copy:comment', 'Commentaire'], ['copy:content_path', 'Chemin du contenu']];
   return [
-    '-', ['rename', 'Renommer…', null, n !== 1],
+    '-', ['rename', 'Renommer…', null, n !== 1], ...torrentCatTagItems(s),
     ['dllimit', 'Limiter la vitesse de téléchargement…', null, !s], ['uplimit', 'Limiter la vitesse d\'envoi…', null, !s],
     ['ratio', 'Limiter le ratio de partage…', null, !s],
     '-', ['autotmm', 'Gestion de torrent automatique', null, !s, s ? allSel((t) => t.auto_tmm) : false],
@@ -147,6 +151,8 @@ async function runTorrentMenu(a, hs) {
   if (a.startsWith('d:')) { runDetailAction(a.slice(2)); return true; }
   // Menu contextuel du lecteur RSS (préfixe « r: »)
   if (a.startsWith('r:')) { runRssAction(a.slice(2)); return true; }
+  // Catégories, étiquettes, trackers (préfixe « f: »)
+  if (a.startsWith('f:')) { runFilterAction(a.slice(2)); return true; }
   const n = hs.length, H = hs.join('|'), ts = selTorrents();
   // qBittorrent peut mettre quelques secondes à renvoyer le changement : on l'affiche tout de suite
   const local = (key, want) => { ts.forEach((t) => { t[key] = want; }); renderTorrentRows(); if (det.hash) renderDetails(); };
@@ -294,7 +300,7 @@ function infoExtraRows(t, p) {
     ['Dernière fois vu complet', fmtDate(p.last_seen)],
     ['Popularité', p.popularity >= 0 ? p.popularity.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) : '—'],
     ['Catégorie', t.category || '—'],
-    ['Tags', t.tags || '—'],
+    ['Étiquettes', t.tags || '—'],
     ['Options', [t.auto_tmm && 'gestion automatique', t.seq_dl && 'ordre séquentiel', t.f_l_piece_prio && 'premiers et derniers morceaux en premier',
       t.super_seeding && 'super partage', t.force_start && 'démarrage forcé'].filter(Boolean).join(', ') || '—'],
     ['Privé', yesNo(p.is_private ?? p.private)],
@@ -401,7 +407,7 @@ async function runDetailAction(a) {
     }
     case 'tdel': {
       const urls = detSel('t');
-      if (urls.length && await apiAct('torrents/removeTrackers', { hash: h, urls: urls.join('|') }, `${urls.length} tracker${urls.length > 1 ? 's' : ''} retiré${urls.length > 1 ? 's' : ''}`)) reload();
+      if (urls.length && await apiAct('torrents/removeTrackers', { hash: h, urls: urls.map(encodeURIComponent).join('|') }, `${urls.length} tracker${urls.length > 1 ? 's' : ''} retiré${urls.length > 1 ? 's' : ''}`)) reload();
       return;
     }
     case 'tcopy': return copyText(detSel('t').join('\n'), 'URL du tracker');
@@ -420,14 +426,14 @@ async function runDetailAction(a) {
     }
     case 'wadd': return textListDialog({ title: 'Ajouter les sources Web', label: 'Adresses (une par ligne)', ok: 'Ajouter',
       check: (l) => /^https?:\/\//i.test(l), bad: 'Adresse invalide (http:// ou https://)',
-      send: (lines) => apiAct('torrents/addWebSeeds', { hash: h, urls: lines.join('|') }, 'Sources ajoutées'), after: reload });
+      send: (lines) => apiAct('torrents/addWebSeeds', { hash: h, urls: lines.map(encodeURIComponent).join('|') }, 'Sources ajoutées'), after: reload });
     case 'wedit': {
       const url = detSel('w')[0];
       return editUrlDialog('Modifier l\'URL de la source Web', url, (nu) => apiAct('torrents/editWebSeed', { hash: h, origUrl: url, newUrl: nu }, 'Source modifiée'), reload);
     }
     case 'wdel': {
       const urls = detSel('w');
-      if (urls.length && await apiAct('torrents/removeWebSeeds', { hash: h, urls: urls.join('|') }, 'Source supprimée')) reload();
+      if (urls.length && await apiAct('torrents/removeWebSeeds', { hash: h, urls: urls.map(encodeURIComponent).join('|') }, 'Source supprimée')) reload();
       return;
     }
     case 'wcopy': return copyText(detSel('w').join('\n'), 'URL de la source Web');

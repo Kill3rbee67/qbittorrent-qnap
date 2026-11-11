@@ -219,7 +219,7 @@ function ruleAdvancedHTML(r) {
       <span class="muted" style="font-size:12px;margin-top:-6px">Saison x épisodes : <b>1x2;8-15;</b> = épisodes 2 et 8 à 15 de la saison 1 ; <b>2x25-;</b> = à partir de l'épisode 25 de la saison 2.</span>
       <label>Ignorer les correspondances suivantes pendant (jours, 0 = désactivé)<input class="field" id="ra-days" type="number" min="0" value="${(r && r.ignoreDays) || 0}"></label>
       <label>Catégorie<select class="field" id="ra-cat"><option value="">(aucune)</option>${cats.map((c) => `<option ${c === cat ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
-      <label>Tags <i>(séparés par des virgules)</i><input class="field" id="ra-tags" value="${esc((tp.tags || []).join(', '))}"></label>
+      <label>Étiquettes <i>(séparées par des virgules)</i><input class="field" id="ra-tags" value="${esc((tp.tags || []).join(', '))}"></label>
       <label>Organisation des fichiers<select class="field" id="ra-layout">${[['', 'Réglage global'], ['Original', 'Comme dans le torrent'], ['Subfolder', 'Toujours dans un sous-dossier'], ['NoSubfolder', 'Jamais de sous-dossier']]
         .map(([v, l]) => `<option value="${v}" ${v === layout ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       ${r && feeds.length ? `<div><span>Flux surveillés par cet abonnement</span><div style="max-height:130px;overflow:auto;border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-top:4px">

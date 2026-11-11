@@ -259,6 +259,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
   <aside class="side" id="side">
     <div class="sec">Téléchargements</div>
     <div id="filters"></div>
+    <div id="sidefilters"></div>
     <div class="sec">Automatique</div>
     <div id="rssnav"></div>
     <div class="sec">Dossiers du NAS</div>
@@ -290,6 +291,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
 <script src="explorer/torrents.js?v=__QPKG_VER__"></script>
 <script src="explorer/reglages.js?v=__QPKG_VER__"></script>
 <script src="explorer/rss.js?v=__QPKG_VER__"></script>
+<script src="explorer/filtres.js?v=__QPKG_VER__"></script>
 <script>
 'use strict';
 // Racine de navigation : /share sur un QNAP (modifiable avec ?root=/chemin pour les tests)
@@ -393,7 +395,9 @@ async function torrentAction(action, hashes) {
 /* ---------- État ---------- */
 const state = {
   view: 'torrents',          // 'torrents' | 'folder'
-  filter: store.get('filter', 'all'),
+  filter: migrateFilter(store.get('filter', 'all')),
+  // Barre latérale : catégorie, étiquette, tracker (null = tous)
+  cat: (store.get('sidesel', {}) || {}).cat ?? null, tag: (store.get('sidesel', {}) || {}).tag ?? null, tracker: (store.get('sidesel', {}) || {}).tracker ?? null,
   pathFilter: null,          // filtre des torrents par dossier
   path: null,                // dossier ouvert
   hist: [],
@@ -420,20 +424,19 @@ const ST = {
 };
 const isStopped = (t) => /^(stopped|paused)/.test(t.state);
 const isError = (t) => t.state === 'error' || t.state === 'missingFiles';
-const FILTERS = [
-  ['all', 'Tous', () => true],
-  ['active', 'En cours', (t) => t.progress < 1 && !isStopped(t) && !isError(t)],
-  ['done', 'Terminés', (t) => t.progress >= 1],
-  ['stopped', 'Arrêtés', (t) => isStopped(t) && t.progress < 1],
-  ['error', 'En erreur', isError],
-];
+// Filtres par état : les 14 de l'interface d'origine (explorer/filtres.js)
+const FILTERS = statusFilters();
 
 /* ---------- Barre latérale ---------- */
 function renderFilters() {
   $('#filters').innerHTML = FILTERS.map(([k, label, fn]) => {
     const on = state.view === 'torrents' && state.filter === k && !state.pathFilter;
-    return `<div class="nav${on ? ' on' : ''}" data-filter="${k}">${label}<span class="cnt">${state.torrents.filter(fn).length}</span></div>`;
+    const n = state.torrents.filter(fn).length;
+    // Filtres vides masqués (sauf les principaux et celui qui est sélectionné)
+    if (!n && !on && !ALWAYS_SHOWN.has(k)) return '';
+    return `<div class="nav${on ? ' on' : ''}" data-filter="${k}">${label}<span class="cnt">${n}</span></div>`;
   }).join('');
+  renderSideFilters();
   $('#rssnav').innerHTML = `<div class="nav${state.view === 'rss' ? ' on' : ''}" data-view="rss">${I.rss()}Abonnements RSS<span class="cnt">${rss.loaded ? Object.keys(rss.rules).length : '…'}</span></div>`;
 }
 function kidsOf(p) {
@@ -550,9 +553,14 @@ function renderPathbar() {
   const pb = $('#pathbar');
   if (state.view === 'torrents') {
     const f = FILTERS.find((x) => x[0] === state.filter);
+    const chips = state.pathFilter ? '' : [
+      state.cat !== null && ['cat', `Catégorie : ${state.cat || 'sans catégorie'}`],
+      state.tag !== null && ['tag', `Étiquette : ${state.tag || 'sans étiquette'}`],
+      state.tracker && ['tracker', `Tracker : ${(TRK_SPECIAL.find((x) => x[0] === state.tracker) || [0, state.tracker])[1]}`],
+    ].filter(Boolean).map(([k, l]) => `<span class="tag" style="margin-left:8px">${esc(l)} <a data-clearside="${k}" title="Retirer ce filtre" style="cursor:pointer">✕</a></span>`).join('');
     pb.innerHTML = `<div class="crumbs"><a data-filter="all">Téléchargements</a><span class="sep">›</span>${state.pathFilter
       ? `<b>Enregistrés dans ${esc(relPath(state.pathFilter))}</b>`
-      : `<b>${f ? f[1] : ''}</b>`}</div>`;
+      : `<b>${f ? f[1] : ''}</b>`}${chips}</div>`;
     return;
   }
   if (state.view === 'rss') { pb.innerHTML = `<div class="crumbs"><b>Abonnements RSS</b></div>`; return; }
@@ -572,9 +580,9 @@ function renderPathbar() {
 /* ---------- Contenu : liste des torrents ---------- */
 function visibleTorrents() {
   const f = (FILTERS.find((x) => x[0] === state.filter) || FILTERS[0])[2];
-  const q = state.search.trim().toLowerCase();
+  const q = state.search.trim().toLowerCase(), hosts = trackerHosts();
   return state.torrents
-    .filter((t) => state.pathFilter ? normalize(t.save_path) === state.pathFilter : f(t))
+    .filter((t) => state.pathFilter ? normalize(t.save_path) === state.pathFilter : f(t) && sideFilter(t, hosts))
     .filter((t) => !q || t.name.toLowerCase().includes(q))
     .sort(torrentSorter());
 }
@@ -584,7 +592,7 @@ function renderTorrentsView() {
   c.innerHTML = `<table><thead><tr>
       <th class="ck"><input type="checkbox" id="selall" title="Tout sélectionner"></th>
       ${sortTh('name', 'Nom')}${sortTh('size', 'Taille', 'num hide-sm')}${sortTh('progress', 'Progression')}${sortTh('state', 'État', 'hide-sm')}
-      ${sortTh('dlspeed', 'Réception', 'num hide-md')}${sortTh('upspeed', 'Envoi', 'num hide-md')}${sortTh('eta', 'Restant', 'num hide-sm')}${sortTh('save_path', 'Dossier', 'hide-md')}
+      ${sortTh('dlspeed', 'Réception', 'num hide-md')}${sortTh('upspeed', 'Envoi', 'num hide-md')}${sortTh('eta', 'Restant', 'num hide-sm')}${sortTh('category', 'Catégorie', 'hide-md')}${sortTh('tags', 'Étiquettes', 'hide-md')}${sortTh('save_path', 'Dossier', 'hide-md')}
     </tr></thead><tbody id="trows"></tbody></table>`;
   renderTorrentRows();
 }
@@ -594,7 +602,7 @@ function renderTorrentRows() {
   const hashes = new Set(state.torrents.map((t) => t.hash));
   for (const h of [...state.sel]) if (!hashes.has(h)) state.sel.delete(h);
   if (!list.length) {
-    body.innerHTML = `<tr><td colspan="9"><div class="empty"><strong>${state.torrents.length ? 'Aucun torrent ne correspond' : 'Aucun téléchargement'}</strong>
+    body.innerHTML = `<tr><td colspan="11"><div class="empty"><strong>${state.torrents.length ? 'Aucun torrent ne correspond' : 'Aucun téléchargement'}</strong>
       <span>Cliquez sur « Ajouter des torrents », naviguez jusqu'au dossier voulu et importez vos fichiers .torrent.</span></div></td></tr>`;
   } else {
     body.innerHTML = list.map((t) => {
@@ -612,6 +620,8 @@ function renderTorrentRows() {
         <td class="num hide-md">${fmtSpeed(t.dlspeed)}</td>
         <td class="num hide-md">${fmtSpeed(t.upspeed)}</td>
         <td class="num hide-sm">${t.progress >= 1 ? '—' : isStopped(t) ? '—' : fmtEta(t.eta)}</td>
+        <td class="hide-md">${t.category ? `<span class="folderlink" data-cat="${esc(t.category)}" title="Filtrer sur cette catégorie">${esc(t.category)}</span>` : '<span class="muted">—</span>'}</td>
+        <td class="hide-md">${tagsOf(t).map((g) => `<span class="tag" data-tag="${esc(g)}" style="cursor:pointer;margin-right:3px" title="Filtrer sur cette étiquette">${esc(g)}</span>`).join('') || '<span class="muted">—</span>'}</td>
         <td class="hide-md"><span class="folderlink" data-folder="${esc(sp)}" title="Ouvrir ${esc(sp)}">${esc(relPath(sp))}</span></td>
       </tr>`;
     }).join('');
@@ -1610,6 +1620,7 @@ function openAddDialog({ files = [], nas = [], magnet = false, links = [] }) {
         <input class="field" id="destp" value="${esc(dest)}" spellcheck="false">
         ${normalize(state.defaultPath) !== dest ? `<small><a href="#" id="usedef" style="color:var(--blue)">Utiliser le dossier par défaut (${esc(relPath(state.defaultPath))})</a></small>` : ''}
         <small id="space" aria-live="polite"></small></div></div>
+      ${addCatTagHTML()}
       <label class="chk"><input type="checkbox" id="startnow" ${store.get('startNow', true) ? 'checked' : ''}> Démarrer le téléchargement immédiatement</label>`,
     onOpen: (bd) => {
       const d = bd.querySelector('#usedef'), destIn = bd.querySelector('#destp');
@@ -1646,6 +1657,10 @@ function openAddDialog({ files = [], nas = [], magnet = false, links = [] }) {
       for (const f of files) fd.append('torrents', f, f.name);
       if (urls.length) fd.append('urls', urls.join('\n'));
       fd.append('savepath', dest);
+      const cat = bd.querySelector('#add-cat').value, tags = bd.querySelector('#add-tags').value.split(',').map((x) => x.trim()).filter(Boolean);
+      store.set('addCat', cat);
+      if (cat) fd.append('category', cat);
+      if (tags.length) fd.append('tags', tags.join(','));
       fd.append('autoTMM', 'false');
       fd.append('stopped', String(!startNow));
       fd.append('paused', String(!startNow));
@@ -1714,6 +1729,8 @@ document.addEventListener('click', async (e) => {
     toast(res.ok ? (t.checked ? `« ${n} » réactivé` : `« ${n} » suspendu : plus de téléchargement automatique`) : 'Modification refusée', !res.ok);
     return loadRss();
   }
+  const cs = t.closest('[data-clearside]');
+  if (cs) { state[cs.dataset.clearside] = null; store.set('sidesel', { cat: state.cat, tag: state.tag, tracker: state.tracker }); return showTorrents(state.filter); }
   const f = t.closest('[data-filter]');
   if (f) return showTorrents(f.dataset.filter);
   const tn = t.closest('#tree .tn');
@@ -1767,7 +1784,7 @@ document.addEventListener('click', async (e) => {
   // Liste des torrents : un clic sur la ligne sélectionne ce torrent et affiche
   // ses détails ; la case à cocher permet d'en sélectionner plusieurs.
   const tr = t.closest('tr[data-hash]');
-  if (tr && !t.closest('[data-folder]')) {
+  if (tr && !t.closest('[data-folder], [data-cat], [data-tag]')) {
     const h = tr.dataset.hash;
     if (t.matches('input[type=checkbox]')) state.sel.has(h) ? state.sel.delete(h) : state.sel.add(h);
     else { state.sel = new Set([h]); openDetails(h); }
