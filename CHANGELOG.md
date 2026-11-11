@@ -2,6 +2,13 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.5.1
+Corrigé
+- Le menu Édition de la barre du haut, plus long que la fenêtre, était remonté pour tenir à l'écran et recouvrait son onglet et la barre bleue. Les menus de la barre s'ouvrent désormais toujours juste sous leur onglet ; trop longs, ils défilent à l'intérieur (hauteur limitée à l'espace restant sous l'onglet).
+- Menus contextuels (clic droit sur un torrent, la barre latérale, les flux, les en-têtes) : ouverts sous le pointeur, ou au-dessus s'il n'y a pas la place en dessous, toujours entièrement visibles, avec défilement si besoin.
+- Sous-menus (Catégorie, Étiquettes, Copier…) : ouverts à droite de leur entrée, à gauche s'ils dépassent à droite, vers le haut s'ils dépassent en bas ; ils se ferment quand on fait défiler le menu principal.
+- Entrées de menu désactivées (aucun torrent sélectionné) plus lisibles : contraste porté à plus de 4,5:1.
+
 ## 5.3.5.0
 Ajouté
 - Colonnes de la liste des torrents : clic droit sur un en-tête (ou Affichage › Colonnes de la liste…) pour afficher ou masquer les 38 colonnes de qBittorrent (taille totale, sources, pairs, ratio, popularité, créé / ajouté / complété le, tracker, limites, téléchargé, envoyé, restant, temps actif, limite de ratio, dernière activité, disponibilité, info hash, réannonce, privé…), avec leurs libellés officiels en français ; « Redimensionner tout » et « Réinitialiser les colonnes ».

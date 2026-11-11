@@ -291,8 +291,8 @@ function colMenuItems() {
   return [['#', 'Colonnes'], ...['name', ...p.order].map((k) => [`col:${k}`, COLMAP[k].l, null, k === 'name', p.show.has(k)]),
     '-', ['colfit', 'Redimensionner tout'], ['colreset', 'Réinitialiser les colonnes']];
 }
-function openColMenu(x, y, keyboard) {
-  showMenu(colMenuItems(), x, y);
+function openColMenu(x, y, keyboard, mode = 'point') {
+  showMenu(colMenuItems(), x, y, null, mode);
   openMenu.el.dataset.keep = '1'; // le menu reste ouvert pour cocher plusieurs colonnes
   openMenu.el.setAttribute('aria-label', 'Colonnes de la liste');
   if (keyboard) openMenu.el.querySelector('button:not(:disabled)')?.focus();
@@ -301,7 +301,7 @@ function openColMenuAtHead(keyboard = true) {
   if (state.view !== 'torrents') showTorrents(state.filter || 'all');
   const th = document.querySelector('#content th.cname');
   const r = th ? th.getBoundingClientRect() : { left: 40, bottom: 120 };
-  openColMenu(r.left, r.bottom + 2, keyboard);
+  openColMenu(r.left, r.bottom + 2, keyboard, 'below');
 }
 // Action d'un élément du menu des colonnes ; true si le menu doit rester ouvert
 function runColMenu(act) {
@@ -327,7 +327,7 @@ document.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   // Touche Menu ou Maj+F10 : le menu s'ouvre sous l'en-tête qui a le focus
   const kb = e.button !== 2 || (!e.clientX && !e.clientY);
-  if (kb) { const r = (e.target.closest('th') || head).getBoundingClientRect(); openColMenu(r.left, r.bottom + 2, true); } else openColMenu(e.clientX, e.clientY, false);
+  if (kb) { const r = (e.target.closest('th') || head).getBoundingClientRect(); openColMenu(r.left, r.bottom + 2, true, 'below'); } else openColMenu(e.clientX, e.clientY, false);
 });
 
 /* Déplacer une colonne (glisser-déposer ou Maj+flèche) */
