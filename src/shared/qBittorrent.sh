@@ -205,8 +205,11 @@ case "$1" in
         : > "$LOG"
     fi
 
-    # nohup n'existe pas sur QTS : on ignore SIGHUP et on détache l'entrée standard
-    ( trap '' HUP; exec "$BIN" --profile="$PROFILE" --webui-port=$WEBUI_PORT \
+    # nohup n'existe pas sur QTS : on ignore SIGHUP et on détache l'entrée standard.
+    # Lancé depuis le dossier du paquet : le dossier courant de l'App Center peut
+    # être supprimé par une mise à jour, et chaque script lancé par qBittorrent
+    # (notifications) écrivait alors « shell-init: error retrieving current directory ».
+    ( cd "$QPKG_ROOT" 2>/dev/null || cd /; trap '' HUP; exec "$BIN" --profile="$PROFILE" --webui-port=$WEBUI_PORT \
         --confirm-legal-notice < /dev/null >> "$LOG" 2>&1 ) &
     echo $! > "$PIDFILE"
     sleep 2

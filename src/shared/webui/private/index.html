@@ -113,6 +113,36 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
   tr.dir, tr.tor { cursor:pointer; }
   tr.other td { color:var(--muted); }
   .tag { font-size:11px; font-style:normal; color:var(--orange); border:1px solid #f0cf9f; background:#fff6e8; border-radius:3px; padding:0 5px; margin-left:4px; }
+  /* --- Liste des torrents : colonnes réglables (explorer/torrents.js) --- */
+  table.tl { table-layout:fixed; width:auto; }
+  .tl th, .tl td { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tl th { position:sticky; top:0; user-select:none; -webkit-user-select:none; }
+  .tl th[data-col] { padding-right:12px; }
+  .tl th:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; }
+  .tl th .thl { overflow:hidden; text-overflow:ellipsis; }
+  .tl .ck { position:sticky; left:0; z-index:1; background:#fff; }
+  .tl .cname { position:sticky; left:34px; z-index:1; background:#fff; border-right:1px solid var(--border); }
+  .tl th.ck, .tl th.cname { z-index:3; background:#f1f4f8; }
+  .tl tbody tr:hover > td.ck, .tl tbody tr:hover > td.cname { background:var(--hover); }
+  .tl tr.sel > td.ck, .tl tr.sel > td.cname { background:#d7e7fb; }
+  .tl .prog { min-width:0; }
+  .tl .st { display:block; overflow:hidden; text-overflow:ellipsis; }
+  .tl .st::before { display:inline-block; margin-right:6px; vertical-align:1px; }
+  .tl .tag[data-tag] { cursor:pointer; margin:0 3px 0 0; }
+  .tl td.emptycell { white-space:normal; }
+  .tl td.emptycell .empty { position:sticky; left:0; width:var(--vw, 100%); }
+  .tl th .rz { position:absolute; top:0; right:0; width:8px; height:100%; cursor:col-resize; touch-action:none; }
+  .tl th .rz::after { content:""; position:absolute; top:6px; bottom:6px; right:3px; width:1px; background:var(--border); }
+  .tl th .rz:hover::after, .tl th .rz:focus-visible::after { top:0; bottom:0; width:2px; right:2px; background:var(--blue); }
+  .tl th .rz:focus-visible { outline:none; }
+  .tl th.dragging { opacity:.45; }
+  .coldrop { position:fixed; z-index:45; width:3px; border-radius:2px; background:var(--blue); pointer-events:none; }
+  body.col-resizing, body.col-resizing * { cursor:col-resize !important; user-select:none; }
+  body.col-dragging, body.col-dragging * { cursor:grabbing !important; user-select:none; }
+  .fitbox { position:absolute; left:-10000px; top:0; visibility:hidden; white-space:nowrap; }
+  .fitbox > div { width:max-content; }
+  .fitbox .fith { font-size:12px; font-weight:600; }
+  .mono { font-family:ui-monospace, Consolas, monospace; font-size:12px; }
   .prog { position:relative; height:16px; min-width:110px; border-radius:3px; background:#e6ebf1; overflow:hidden; }
   .prog i { position:absolute; inset:0 auto 0 0; background:var(--blue); }
   .prog.done i { background:var(--green); }
@@ -590,43 +620,37 @@ function visibleTorrents() {
 function renderTorrentsView() {
   const c = $('#content');
   c.removeAttribute('data-drop');
-  c.innerHTML = `<table><thead><tr>
-      <th class="ck"><input type="checkbox" id="selall" title="Tout sélectionner"></th>
-      ${sortTh('name', 'Nom')}${sortTh('size', 'Taille', 'num hide-sm')}${sortTh('progress', 'Progression')}${sortTh('state', 'État', 'hide-sm')}
-      ${sortTh('dlspeed', 'Réception', 'num hide-md')}${sortTh('upspeed', 'Envoi', 'num hide-md')}${sortTh('eta', 'Restant', 'num hide-sm')}${sortTh('category', 'Catégorie', 'hide-md')}${sortTh('tags', 'Étiquettes', 'hide-md')}${sortTh('save_path', 'Dossier', 'hide-md')}
-    </tr></thead><tbody id="trows"></tbody></table>`;
+  // Colonnes : explorer/torrents.js (choix, largeurs et ordre mémorisés)
+  c.innerHTML = `<table class="tl">${torrentHeadHTML(shownCols())}<tbody id="trows"></tbody></table>`;
+  layoutCols();
   renderTorrentRows();
 }
 function renderTorrentRows() {
   const body = $('#trows'); if (!body) return;
-  const list = visibleTorrents();
+  const list = visibleTorrents(), cols = shownCols();
   const hashes = new Set(state.torrents.map((t) => t.hash));
   for (const h of [...state.sel]) if (!hashes.has(h)) state.sel.delete(h);
   if (!list.length) {
-    body.innerHTML = `<tr><td colspan="11"><div class="empty"><strong>${state.torrents.length ? 'Aucun torrent ne correspond' : 'Aucun téléchargement'}</strong>
+    body.innerHTML = `<tr><td colspan="${cols.length + 1}" class="emptycell"><div class="empty"><strong>${state.torrents.length ? 'Aucun torrent ne correspond' : 'Aucun téléchargement'}</strong>
       <span>Cliquez sur « Ajouter des torrents », naviguez jusqu'au dossier voulu et importez vos fichiers .torrent.</span></div></td></tr>`;
   } else {
-    body.innerHTML = list.map((t) => {
-      const [label, cls] = ST[t.state] || [t.state, 'wait'];
-      const pct = Math.floor(t.progress * 1000) / 10;
-      const pcls = isError(t) ? 'err' : t.progress >= 1 ? 'done' : isStopped(t) ? 'stop' : '';
-      const sel = state.sel.has(t.hash);
-      const sp = normalize(t.save_path);
-      return `<tr class="${sel ? 'sel' : ''}${t.hash === det.hash ? ' focus' : ''}" data-hash="${t.hash}">
-        <td class="ck"><input type="checkbox" ${sel ? 'checked' : ''} aria-label="Sélectionner"></td>
-        <td><div class="name" title="${esc(t.name)}">${I.torrent(18)}<span>${esc(t.name)}</span></div></td>
-        <td class="num hide-sm">${fmtSize(t.size)}</td>
-        <td><div class="prog ${pcls}"><i style="width:${pct}%"></i><b>${pct.toLocaleString('fr-FR')} %</b></div></td>
-        <td class="hide-sm"><span class="st ${cls}">${label}</span></td>
-        <td class="num hide-md">${fmtSpeed(t.dlspeed)}</td>
-        <td class="num hide-md">${fmtSpeed(t.upspeed)}</td>
-        <td class="num hide-sm">${t.progress >= 1 ? '—' : isStopped(t) ? '—' : fmtEta(t.eta)}</td>
-        <td class="hide-md">${t.category ? `<span class="folderlink" data-cat="${esc(t.category)}" title="Filtrer sur cette catégorie">${esc(t.category)}</span>` : '<span class="muted">—</span>'}</td>
-        <td class="hide-md">${tagsOf(t).map((g) => `<span class="tag" data-tag="${esc(g)}" style="cursor:pointer;margin-right:3px" title="Filtrer sur cette étiquette">${esc(g)}</span>`).join('') || '<span class="muted">—</span>'}</td>
-        <td class="hide-md"><span class="folderlink" data-folder="${esc(sp)}" title="Ouvrir ${esc(sp)}">${esc(relPath(sp))}</span></td>
-      </tr>`;
-    }).join('');
+    // Rafraîchissement toutes les 2 s : si les lignes sont les mêmes, dans le même ordre,
+    // seules celles qui ont changé sont redessinées (listes de plusieurs centaines de torrents)
+    const html = list.map((t) => torrentRowHTML(t, cols)), rows = body.rows;
+    if (rows.length === html.length && body._html && body._html.length === html.length && list.every((t, i) => rows[i].dataset.hash === t.hash)) {
+      const changed = [];
+      for (let i = 0; i < html.length; i++) if (body._html[i] !== html[i]) changed.push(i);
+      // Beaucoup de lignes modifiées (colonnes « Dernière activité »…) : tout redessiner coûte moins
+      if (changed.length > 50 && changed.length > html.length / 4) body.innerHTML = html.join('');
+      else for (const i of changed) rows[i].outerHTML = html[i];
+    } else body.innerHTML = html.join('');
+    body._html = html;
+    return renderSelAll(list);
   }
+  body._html = null;
+  renderSelAll(list);
+}
+function renderSelAll(list) {
   const all = $('#selall');
   if (all) { all.checked = list.length > 0 && list.every((t) => state.sel.has(t.hash)); all.indeterminate = !all.checked && list.some((t) => state.sel.has(t.hash)); }
 }
@@ -1124,7 +1148,7 @@ function menus() {
       ['subscribe2', 'Nouvel abonnement RSS…', I.rss()], '-', ['creator', 'Créateur de torrent…'], ['magnethandler', 'Associer les liens magnet au navigateur…'],
       '-', ['logout', 'Déconnexion'], ['shutdown', 'Quitter qBittorrent…']]],
     ['Édition', editItems()],
-    ['Affichage', [['vdl', 'Téléchargements'], ['vrss', 'Abonnements RSS', I.rss()], ['vreader', 'Lecteur RSS'], '-', ['log', 'Journal…'], ['stats', 'Statistiques…'],
+    ['Affichage', [['vdl', 'Téléchargements'], ['cols', 'Colonnes de la liste…'], ['vrss', 'Abonnements RSS', I.rss()], ['vreader', 'Lecteur RSS'], '-', ['log', 'Journal…'], ['stats', 'Statistiques…'],
       '-', ['titlespeed', 'Vitesse dans la barre de titre', null, false, !!store.get('titleSpeed', false)]]],
     ['Outils', [['settings', 'Réglages…'], ['limits', 'Limites de vitesse globales…'], ['alt', 'Limites de vitesse alternatives', null, false, !!state.altSpeed], '-',
       ['cookies', 'Gérer les cookies…'], '-', ['passwd', 'Mot de passe…']]],
@@ -1138,12 +1162,20 @@ function menuHTML(items) {
     const [act, label, icon, disabled, checked, sub] = it;
     const mark = checked !== undefined && checked !== null ? (checked ? '✓' : '') : (icon || '');
     if (sub) return `<button role="menuitem" aria-haspopup="menu" data-msub="${esc(act)}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}<span class="sub">›</span></button>`;
-    return `<button role="menuitem${checked !== undefined && checked !== null ? 'checkbox' : ''}" data-mact="${esc(act)}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}</button>`;
+    const isCk = checked !== undefined && checked !== null;
+    return `<button role="menuitem${isCk ? `checkbox" aria-checked="${checked ? 'true' : 'false'}` : ''}" data-mact="${esc(act)}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}</button>`;
   }).join('');
 }
 let openMenu = null;
 function closeSub() { if (openMenu && openMenu.subEl) { openMenu.subEl.remove(); openMenu.subBtn.classList.remove('open'); openMenu.subEl = openMenu.subBtn = null; } }
-function closeMenu() { if (!openMenu) return; closeSub(); openMenu.el.remove(); if (openMenu.btn) openMenu.btn.classList.remove('open'); openMenu = null; }
+function closeMenu(refocus = false) {
+  if (!openMenu) return;
+  let ret = openMenu.ret;
+  // En-tête de colonne redessiné pendant que le menu était ouvert : on retrouve le nouveau
+  if (ret && !ret.isConnected && ret.dataset && ret.dataset.col) ret = document.querySelector(`#content th[data-col="${CSS.escape(ret.dataset.col)}"]`);
+  closeSub(); openMenu.el.remove(); if (openMenu.btn) openMenu.btn.classList.remove('open'); openMenu = null;
+  if (refocus && ret && ret.isConnected) ret.focus(); // Échap : retour à l'élément d'origine
+}
 function placeMenu(m, x, y, alt = null) {
   const r = m.getBoundingClientRect();
   // Si le menu dépasse à droite, on l'ouvre de l'autre côté (sous-menus)
@@ -1161,7 +1193,7 @@ function showMenu(items, x, y, btn = null) {
   const subs = {};
   const walk = (list) => list.forEach((it) => { if (Array.isArray(it) && it[5]) { subs[it[0]] = it[5]; walk(it[5]); } });
   walk(items);
-  openMenu = { el: m, btn, subs };
+  openMenu = { el: m, btn, subs, ret: btn || (document.activeElement !== document.body ? document.activeElement : null) };
   if (btn) btn.classList.add('open');
 }
 function openSub(b) {
@@ -1219,6 +1251,7 @@ async function runMenu(act) {
     case 'resumesession': return (await apiAct('transfer/resumeSession', {})) && done('Session reprise');
     case 'titlespeed': store.set('titleSpeed', !store.get('titleSpeed', false)); return updateTitle();
     case 'vdl': return showTorrents('all');
+    case 'cols': return openColMenuAtHead(true);
     case 'vrss': state.rssTab = 'subs'; store.set('rssTab', 'subs'); return showRss();
     case 'vreader': state.rssTab = 'reader'; store.set('rssTab', 'reader'); return showRss();
     case 'cookies': return cookiesDialog();
@@ -1240,10 +1273,15 @@ async function runMenu(act) {
 }
 document.addEventListener('click', (e) => {
   const mb = e.target.closest('[data-menu]');
-  if (mb) { if (openMenu && openMenu.btn === mb) closeMenu(); else openTopMenu(mb); return; }
+  if (mb) {
+    if (openMenu && openMenu.btn === mb) closeMenu();
+    else { openTopMenu(mb); if (e.detail === 0) openMenu?.el.querySelector('button:not(:disabled)')?.focus(); } // ouvert au clavier
+    return;
+  }
   const ms = e.target.closest('.menu [data-msub]');
   if (ms) { openSub(ms); return; }
   const mi = e.target.closest('.menu [data-mact]');
+  if (mi && mi.closest('.menu[data-keep]')) { if (!runColMenu(mi.dataset.mact)) closeMenu(); return; }
   if (mi) { closeMenu(); runMenu(mi.dataset.mact); return; }
   if (openMenu && !e.target.closest('.menu')) closeMenu();
 });
@@ -1255,7 +1293,24 @@ document.addEventListener('mouseover', (e) => {
   const it = e.target.closest('.menu button');
   if (it && openMenu && it.parentElement === openMenu.el) { if (it.dataset.msub) openSub(it); else closeSub(); }
 });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+// Clavier dans les menus : ↑/↓, Début/Fin, → ouvre un sous-menu, ← le referme, Échap ferme
+document.addEventListener('keydown', (e) => {
+  if (!openMenu) return;
+  if (e.key === 'Escape') { closeMenu(true); return; }
+  const cur = document.activeElement, inSub = openMenu.subEl && openMenu.subEl.contains(cur);
+  const m = inSub ? openMenu.subEl : openMenu.el;
+  if (e.key === 'ArrowRight' && cur && cur.dataset && cur.dataset.msub && m.contains(cur)) {
+    e.preventDefault(); openSub(cur); openMenu.subEl?.querySelector('button:not(:disabled)')?.focus(); return;
+  }
+  if (e.key === 'ArrowLeft' && inSub) { e.preventDefault(); const b = openMenu.subBtn; closeSub(); b.focus(); return; }
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+  const items = [...m.querySelectorAll(':scope > button:not(:disabled)')];
+  if (!items.length) return;
+  e.preventDefault();
+  let i = items.indexOf(cur);
+  i = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : e.key === 'ArrowDown' ? (i + 1) % items.length : (i <= 0 ? items.length - 1 : i - 1);
+  items[i].focus();
+});
 // Clic droit sur un torrent : menu Édition
 document.addEventListener('contextmenu', (e) => {
   const tr = e.target.closest('#trows tr[data-hash]');

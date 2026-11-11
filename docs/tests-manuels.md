@@ -19,7 +19,7 @@ Avant de commencer : sauvegardez le profil (voir README, « Mise à jour et migr
 
 | # | Action | Résultat attendu |
 |---|---|---|
-| 2.1 | Cliquer sur les en-têtes Nom, Taille, Progression. | Tri croissant puis décroissant, flèche ▲ / ▼. |
+| 2.1 | Cliquer sur les en-têtes Nom, Taille, Progression (pas sur la poignée du bord). | Tri croissant puis décroissant, flèche ▲ / ▼. |
 | 2.2 | Clic droit sur un torrent › Renommer… | Le nom change dans la liste (pas les fichiers sur le disque). |
 | 2.3 | Clic droit › Limiter la vitesse de téléchargement… › 500. | Infos du torrent : « Limites de vitesse ↓ 500 Kio/s ». Remettre 0. |
 | 2.4 | Clic droit › Limiter le ratio de partage… › Limiter à ratio 2. | Fenêtre rouverte : ratio 2 coché. Remettre « limites globales ». |
@@ -28,6 +28,21 @@ Avant de commencer : sauvegardez le profil (voir README, « Mise à jour et migr
 | 2.7 | Clic droit › Exporter le .torrent. | Le fichier `.torrent` est téléchargé, avec le nom du torrent. |
 | 2.8 | Édition › Suspendre la session, puis Édition › Reprendre la session. | Tous les échanges s'arrêtent, puis reprennent. |
 | 2.9 | Affichage › Vitesse dans la barre de titre. | L'onglet du navigateur affiche `[↓ …, ↑ …]`. |
+
+## 2 bis. Colonnes de la liste (QTS)
+
+| # | Action | Résultat attendu |
+|---|---|---|
+| 2b.1 | Clic droit sur un en-tête de la liste. | Menu « Colonnes » : 38 colonnes, Nom coché et grisé (non décochable). |
+| 2b.2 | Cocher Ratio, Ajouté le, Tracker ; décocher Envoi. | Les colonnes apparaissent ou disparaissent aussitôt, le menu reste ouvert. Échap le ferme. |
+| 2b.3 | Glisser la poignée au bord droit de l'en-tête Taille. | La colonne s'élargit ou se rétrécit en suivant la souris, sans trier la liste. |
+| 2b.4 | Double-cliquer sur la poignée de Répertoire de destination. | Largeur ajustée au plus long dossier affiché. |
+| 2b.5 | Glisser l'en-tête Taille après État. | Un trait bleu montre la position ; Taille se place après État. La colonne Nom ne se déplace pas. |
+| 2b.6 | Recharger la page (F5), puis l'ouvrir dans un autre onglet. | Colonnes, largeurs et ordre conservés. |
+| 2b.7 | Afficher une dizaine de colonnes en plus, faire défiler la liste vers la droite. | La colonne Nom reste visible à gauche, le début des noms n'est jamais coupé. |
+| 2b.8 | Clavier : Tab jusqu'à un en-tête, ←/→, Entrée, Maj+→, puis Maj+F10, ↓, Entrée, Échap. | Le focus passe d'un en-tête à l'autre ; Entrée trie ; Maj+→ déplace la colonne ; le menu des colonnes s'ouvre et se manipule sans souris. |
+| 2b.9 | Clic droit sur un en-tête › Réinitialiser les colonnes. | Retour aux colonnes, largeurs et ordre d'origine. |
+| 2b.10 | Avec plusieurs centaines de torrents : faire défiler, trier, redimensionner. | Pas de ralentissement visible ; le rafraîchissement toutes les 2 s ne fige pas la page. |
 
 ## 3. Panneau de détails (QTS)
 
