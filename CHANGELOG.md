@@ -13,7 +13,7 @@ Modifié
 - README : section « Thèmes », crédits et licences des polices.
 - L'interface classique de qBittorrent n'est pas thémée.
 
-## 5.3.5.2
+## 5.3.5.2 (non publiée seule : incluse dans la 5.3.6.0)
 Préparation des thèmes (aucun changement visible : l'apparence d'origine, désormais appelée « Classique », est reproduite pixel pour pixel).
 
 Ajouté
