@@ -178,6 +178,20 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
   .menu .mi { width:18px; display:flex; justify-content:center; color:var(--muted); flex:none; }
   .menu hr { border:0; border-top:1px solid var(--border); margin:4px 0; }
   .menu .mh { padding:8px 14px 3px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+  .menu button .sub { margin-left:auto; padding-left:18px; color:var(--muted); }
+  .menu button.open { background:var(--hover); }
+  th[data-sort] { cursor:pointer; user-select:none; }
+  th[data-sort]:hover { color:var(--blue-dark); }
+  th .arr { font-size:10px; margin-left:3px; color:var(--blue); }
+  .dtool { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:8px 12px; border-bottom:1px solid var(--border); background:#fafbfd; }
+  .dtool .btn { padding:4px 10px; font-size:12.5px; }
+  .dbody tr.dsel td { background:var(--sel); }
+  .st.offline { background:#fde8e8; color:var(--red); }
+  .preview { max-height:220px; overflow:auto; border:1px solid var(--border); border-radius:4px; font-size:12.5px; }
+  .preview td { padding:3px 8px; } .preview .old { color:var(--muted); text-decoration:line-through; }
+  .radio { display:flex; align-items:center; gap:8px; } .radio input { margin:0; }
+  .sub-fields { display:grid; gap:6px; padding-left:24px; }
+  .sub-fields label.chk { display:flex; gap:8px; align-items:center; }
   /* --- Fenêtres larges : réglages, journal --- */
   .dlg.wide { max-width:900px; }
   .settings { display:grid; grid-template-columns:190px minmax(0,1fr); margin:-16px -18px 0; min-height:440px; }
@@ -236,7 +250,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
   </div>
   <nav class="menubar" id="menubar" aria-label="Menus"></nav>
   <div class="grow"></div>
-  <div class="speeds"><span id="spd-dl">↓ —</span><span id="spd-up">↑ —</span></div>
+  <div class="speeds" id="speeds" title="Limites de vitesse globales" style="cursor:pointer"><span id="spd-dl">↓ —</span><span id="spd-up">↑ —</span></div>
   <button class="tbtn hide-sm" id="classic" title="Ouvrir l'interface d'origine de qBittorrent">⇄ Interface classique</button>
   <button class="tbtn" id="logout">Déconnexion</button>
 </header>
@@ -245,6 +259,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
   <aside class="side" id="side">
     <div class="sec">Téléchargements</div>
     <div id="filters"></div>
+    <div id="sidefilters"></div>
     <div class="sec">Automatique</div>
     <div id="rssnav"></div>
     <div class="sec">Dossiers du NAS</div>
@@ -260,6 +275,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
         <button class="tab" data-dtab="files">Fichiers</button>
         <button class="tab" data-dtab="trackers">Trackers</button>
         <button class="tab" data-dtab="peers">Pairs</button>
+        <button class="tab" data-dtab="webseeds">Sources HTTP</button>
         <span class="dname" id="dname"></span>
         <button class="ibtn" data-act="closedet" title="Fermer le panneau" aria-label="Fermer">✕</button>
       </div>
@@ -272,6 +288,11 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
 <input type="file" id="pick" accept=".torrent,application/x-bittorrent" multiple hidden>
 <div class="toast" id="toast" role="status"></div>
 
+<script src="explorer/torrents.js?v=__QPKG_VER__"></script>
+<script src="explorer/reglages.js?v=__QPKG_VER__"></script>
+<script src="explorer/rss.js?v=__QPKG_VER__"></script>
+<script src="explorer/filtres.js?v=__QPKG_VER__"></script>
+<script src="explorer/outils.js?v=__QPKG_VER__"></script>
 <script>
 'use strict';
 // Racine de navigation : /share sur un QNAP (modifiable avec ?root=/chemin pour les tests)
@@ -375,7 +396,9 @@ async function torrentAction(action, hashes) {
 /* ---------- État ---------- */
 const state = {
   view: 'torrents',          // 'torrents' | 'folder'
-  filter: store.get('filter', 'all'),
+  filter: migrateFilter(store.get('filter', 'all')),
+  // Barre latérale : catégorie, étiquette, tracker (null = tous)
+  cat: (store.get('sidesel', {}) || {}).cat ?? null, tag: (store.get('sidesel', {}) || {}).tag ?? null, tracker: (store.get('sidesel', {}) || {}).tracker ?? null,
   pathFilter: null,          // filtre des torrents par dossier
   path: null,                // dossier ouvert
   hist: [],
@@ -383,6 +406,7 @@ const state = {
   dirs: [], files: [], missing: false, loading: false, fileSel: new Set(),
   search: '', fsearch: '',
   mode: store.get('mode', 'list'),
+  rssTab: store.get('rssTab', 'subs'), rssFeed: '', rssArt: null, // RSS : onglet, flux et article sélectionnés
   defaultPath: ROOT,
 };
 const tree = { kids: new Map(), open: new Set() };
@@ -401,20 +425,19 @@ const ST = {
 };
 const isStopped = (t) => /^(stopped|paused)/.test(t.state);
 const isError = (t) => t.state === 'error' || t.state === 'missingFiles';
-const FILTERS = [
-  ['all', 'Tous', () => true],
-  ['active', 'En cours', (t) => t.progress < 1 && !isStopped(t) && !isError(t)],
-  ['done', 'Terminés', (t) => t.progress >= 1],
-  ['stopped', 'Arrêtés', (t) => isStopped(t) && t.progress < 1],
-  ['error', 'En erreur', isError],
-];
+// Filtres par état : les 14 de l'interface d'origine (explorer/filtres.js)
+const FILTERS = statusFilters();
 
 /* ---------- Barre latérale ---------- */
 function renderFilters() {
   $('#filters').innerHTML = FILTERS.map(([k, label, fn]) => {
     const on = state.view === 'torrents' && state.filter === k && !state.pathFilter;
-    return `<div class="nav${on ? ' on' : ''}" data-filter="${k}">${label}<span class="cnt">${state.torrents.filter(fn).length}</span></div>`;
+    const n = state.torrents.filter(fn).length;
+    // Filtres vides masqués (sauf les principaux et celui qui est sélectionné)
+    if (!n && !on && !ALWAYS_SHOWN.has(k)) return '';
+    return `<div class="nav${on ? ' on' : ''}" data-filter="${k}">${label}<span class="cnt">${n}</span></div>`;
   }).join('');
+  renderSideFilters();
   $('#rssnav').innerHTML = `<div class="nav${state.view === 'rss' ? ' on' : ''}" data-view="rss">${I.rss()}Abonnements RSS<span class="cnt">${rss.loaded ? Object.keys(rss.rules).length : '…'}</span></div>`;
 }
 function kidsOf(p) {
@@ -501,12 +524,19 @@ function renderToolbar() {
   } else if (state.view === 'rss') {
     const iv = rss.prefs ? rss.prefs.rss_refresh_interval : 30;
     const opts = [...new Set([5, 10, 15, 30, 60, 120, iv])].sort((a, b) => a - b);
-    tb.innerHTML = `
+    const tabs = `<div class="seg"><button data-rtab="subs" class="${state.rssTab !== 'reader' ? 'on' : ''}" style="width:auto;padding:0 10px">Abonnements</button><button data-rtab="reader" class="${state.rssTab === 'reader' ? 'on' : ''}" style="width:auto;padding:0 10px">Lecteur</button></div>`;
+    tb.innerHTML = tabs + (state.rssTab === 'reader' ? `
+      <button class="btn primary" data-ract="newfeed">${I.plus()}<span>Nouveau flux</span></button>
+      <button class="btn" data-ract="newfolder">${I.newdir()}<span class="lbl-long">Nouveau dossier</span></button>
+      <button class="btn" data-ract="refreshall">${I.refresh()}<span>Actualiser</span></button>
+      <button class="btn" data-ract="${state.rssFeed ? 'read' : 'readall'}">Marquer comme lu</button>
+      <span class="grow"></span>` : `
       <button class="btn primary" data-act="rssnew">${I.plus()}<span>Nouvel abonnement</span></button>
       <button class="btn" data-act="rssrefresh">${I.refresh()}<span>Vérifier<span class="lbl-long"> maintenant</span></span></button>
-      <span class="grow"></span>
+      <span class="grow"></span>`)
+      + (state.rssTab === 'reader' ? '' : `
       <label class="muted" style="display:flex;align-items:center;gap:6px;white-space:nowrap">Vérifier les flux toutes les
-        <select class="search" style="width:auto" data-rssint>${opts.map((m) => `<option value="${m}" ${m === iv ? 'selected' : ''}>${m} min</option>`).join('')}</select></label>`;
+        <select class="search" style="width:auto" data-rssint>${opts.map((m) => `<option value="${m}" ${m === iv ? 'selected' : ''}>${m} min</option>`).join('')}</select></label>`);
   } else {
     const n = state.fileSel.size;
     tb.innerHTML = `
@@ -524,9 +554,14 @@ function renderPathbar() {
   const pb = $('#pathbar');
   if (state.view === 'torrents') {
     const f = FILTERS.find((x) => x[0] === state.filter);
+    const chips = state.pathFilter ? '' : [
+      state.cat !== null && ['cat', `Catégorie : ${state.cat || 'sans catégorie'}`],
+      state.tag !== null && ['tag', `Étiquette : ${state.tag || 'sans étiquette'}`],
+      state.tracker && ['tracker', `Tracker : ${(TRK_SPECIAL.find((x) => x[0] === state.tracker) || [0, state.tracker])[1]}`],
+    ].filter(Boolean).map(([k, l]) => `<span class="tag" style="margin-left:8px">${esc(l)} <a data-clearside="${k}" title="Retirer ce filtre" style="cursor:pointer">✕</a></span>`).join('');
     pb.innerHTML = `<div class="crumbs"><a data-filter="all">Téléchargements</a><span class="sep">›</span>${state.pathFilter
       ? `<b>Enregistrés dans ${esc(relPath(state.pathFilter))}</b>`
-      : `<b>${f ? f[1] : ''}</b>`}</div>`;
+      : `<b>${f ? f[1] : ''}</b>`}${chips}</div>`;
     return;
   }
   if (state.view === 'rss') { pb.innerHTML = `<div class="crumbs"><b>Abonnements RSS</b></div>`; return; }
@@ -546,19 +581,19 @@ function renderPathbar() {
 /* ---------- Contenu : liste des torrents ---------- */
 function visibleTorrents() {
   const f = (FILTERS.find((x) => x[0] === state.filter) || FILTERS[0])[2];
-  const q = state.search.trim().toLowerCase();
+  const q = state.search.trim().toLowerCase(), hosts = trackerHosts();
   return state.torrents
-    .filter((t) => state.pathFilter ? normalize(t.save_path) === state.pathFilter : f(t))
+    .filter((t) => state.pathFilter ? normalize(t.save_path) === state.pathFilter : f(t) && sideFilter(t, hosts))
     .filter((t) => !q || t.name.toLowerCase().includes(q))
-    .sort((a, b) => b.added_on - a.added_on);
+    .sort(torrentSorter());
 }
 function renderTorrentsView() {
   const c = $('#content');
   c.removeAttribute('data-drop');
   c.innerHTML = `<table><thead><tr>
       <th class="ck"><input type="checkbox" id="selall" title="Tout sélectionner"></th>
-      <th>Nom</th><th class="num hide-sm">Taille</th><th>Progression</th><th class="hide-sm">État</th>
-      <th class="num hide-md">Réception</th><th class="num hide-md">Envoi</th><th class="num hide-sm">Restant</th><th class="hide-md">Dossier</th>
+      ${sortTh('name', 'Nom')}${sortTh('size', 'Taille', 'num hide-sm')}${sortTh('progress', 'Progression')}${sortTh('state', 'État', 'hide-sm')}
+      ${sortTh('dlspeed', 'Réception', 'num hide-md')}${sortTh('upspeed', 'Envoi', 'num hide-md')}${sortTh('eta', 'Restant', 'num hide-sm')}${sortTh('category', 'Catégorie', 'hide-md')}${sortTh('tags', 'Étiquettes', 'hide-md')}${sortTh('save_path', 'Dossier', 'hide-md')}
     </tr></thead><tbody id="trows"></tbody></table>`;
   renderTorrentRows();
 }
@@ -568,7 +603,7 @@ function renderTorrentRows() {
   const hashes = new Set(state.torrents.map((t) => t.hash));
   for (const h of [...state.sel]) if (!hashes.has(h)) state.sel.delete(h);
   if (!list.length) {
-    body.innerHTML = `<tr><td colspan="9"><div class="empty"><strong>${state.torrents.length ? 'Aucun torrent ne correspond' : 'Aucun téléchargement'}</strong>
+    body.innerHTML = `<tr><td colspan="11"><div class="empty"><strong>${state.torrents.length ? 'Aucun torrent ne correspond' : 'Aucun téléchargement'}</strong>
       <span>Cliquez sur « Ajouter des torrents », naviguez jusqu'au dossier voulu et importez vos fichiers .torrent.</span></div></td></tr>`;
   } else {
     body.innerHTML = list.map((t) => {
@@ -586,6 +621,8 @@ function renderTorrentRows() {
         <td class="num hide-md">${fmtSpeed(t.dlspeed)}</td>
         <td class="num hide-md">${fmtSpeed(t.upspeed)}</td>
         <td class="num hide-sm">${t.progress >= 1 ? '—' : isStopped(t) ? '—' : fmtEta(t.eta)}</td>
+        <td class="hide-md">${t.category ? `<span class="folderlink" data-cat="${esc(t.category)}" title="Filtrer sur cette catégorie">${esc(t.category)}</span>` : '<span class="muted">—</span>'}</td>
+        <td class="hide-md">${tagsOf(t).map((g) => `<span class="tag" data-tag="${esc(g)}" style="cursor:pointer;margin-right:3px" title="Filtrer sur cette étiquette">${esc(g)}</span>`).join('') || '<span class="muted">—</span>'}</td>
         <td class="hide-md"><span class="folderlink" data-folder="${esc(sp)}" title="Ouvrir ${esc(sp)}">${esc(relPath(sp))}</span></td>
       </tr>`;
     }).join('');
@@ -634,6 +671,10 @@ function renderFolderView() {
 /* ---------- Barre d'état ---------- */
 function renderStatus() {
   const sb = $('#statusbar');
+  if (state.offline >= 2) {
+    sb.innerHTML = `<span class="st offline">qBittorrent ne répond pas</span><span>Vérifiez qu'il est démarré dans l'App Center. Nouvelle tentative toutes les 2 secondes…</span>`;
+    return;
+  }
   if (state.view === 'torrents') {
     const n = visibleTorrents().length;
     sb.innerHTML = `<span>${n} torrent${n > 1 ? 's' : ''}</span>${state.sel.size ? `<span>${state.sel.size} sélectionné${state.sel.size > 1 ? 's' : ''}</span>` : ''}${connHTML()}${freeHTML()}`;
@@ -691,7 +732,7 @@ async function loadRss() {
       api('rss/items?withData=true').then((r) => (r.ok ? r.json() : {})),
       api('app/preferences').then((r) => (r.ok ? r.json() : null)),
     ]);
-    rss.rules = rules || {}; rss.feeds = flattenFeeds(items); rss.prefs = prefs;
+    rss.rules = rules || {}; rss.tree = items || {}; rss.feeds = flattenFeeds(items); rss.prefs = prefs;
     rss.loaded = true;
   } catch (_) {}
   renderFilters();
@@ -706,6 +747,7 @@ function renderRssView() {
   const c = $('#content');
   c.removeAttribute('data-drop');
   if (!rss.loaded) { c.innerHTML = `<div class="empty">Chargement…</div>`; return; }
+  if (state.rssTab === 'reader') return renderRssReader();
   const p = rss.prefs || {};
   const off = !p.rss_processing_enabled || !p.rss_auto_downloading_enabled;
   const warn = off && Object.keys(rss.rules).length ? `<div class="hint" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -737,11 +779,10 @@ function renderRssView() {
   c.innerHTML = warn + `<table><thead><tr><th class="ck" title="Actif">✓</th><th>Abonnement</th><th class="hide-sm">Filtre</th><th>Dossier</th>
     <th class="hide-md">Dernier ajout</th><th class="hide-sm">État du flux</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-// Pour les sites qui proposent un flux RSS de leurs recherches via page=rss, l'adresse de la page de résultats est convertie
+// Adresse du flux : utilisée telle quelle (http ou https)
 function toFeedUrl(s) {
   let u; try { u = new URL(s.trim()); } catch (_) { return null; }
   if (!/^https?:$/.test(u.protocol)) return null;
-  if (/(^|\.)nyaa\.si$/i.test(u.hostname) && u.searchParams.get('page') !== 'rss') u.searchParams.set('page', 'rss');
   return u.toString();
 }
 function nameFromUrl(s) {
@@ -763,7 +804,7 @@ async function waitFeed(url, ms = 25000) {
   }
   return { feed: f, loaded: false };
 }
-function subscribeDialog({ dest = state.defaultPath, name = null } = {}) {
+function subscribeDialog({ dest = state.defaultPath, name = null, url: preUrl = '' } = {}) {
   const r = name ? rss.rules[name] : null, f = r ? feedOf(r) : null;
   if (r) dest = ruleDest(r) || state.defaultPath;
   const stopped = r ? !!((r.torrentParams && r.torrentParams.stopped) ?? r.addPaused) : !store.get('startNow', true);
@@ -771,8 +812,8 @@ function subscribeDialog({ dest = state.defaultPath, name = null } = {}) {
     title: r ? `Modifier « ${name} »` : 'Nouvel abonnement RSS', ok: r ? 'Enregistrer' : 'S\'abonner',
     body: `
       <label>Adresse du flux RSS
-        <input class="field" id="rs-url" ${r ? 'readonly' : ''} value="${esc(f ? f.url : (r ? (r.affectedFeeds || [])[0] || '' : ''))}" placeholder="https://…  (flux RSS de votre recherche)" spellcheck="false"></label>
-      ${r ? '' : `<span class="muted" style="font-size:12.5px;margin-top:-6px">Collez l'adresse du flux RSS de votre recherche. Sur certains sites, l'adresse de la page de résultats suffit : elle est convertie automatiquement en flux RSS.</span>
+        <input class="field" id="rs-url" ${r ? 'readonly' : ''} value="${esc(f ? f.url : (r ? (r.affectedFeeds || [])[0] || '' : preUrl))}" placeholder="https://…  (flux RSS de votre recherche)" spellcheck="false"></label>
+      ${r ? '' : `<span class="muted" style="font-size:12.5px;margin-top:-6px">Collez l'adresse du flux RSS de la page de résultats d'un site de votre choix (souvent un lien ou une icône « RSS » sur cette page).</span>
       <label>Nom de l'abonnement<input class="field" id="rs-name" maxlength="100"></label>`}
       <label><span>Le titre doit contenir <i>(facultatif)</i></span>
         <input class="field" id="rs-must" value="${esc(r ? r.mustContain || '' : '')}" placeholder="vide = tout ce que publie le flux · ex. 1080p"></label>
@@ -783,9 +824,12 @@ function subscribeDialog({ dest = state.defaultPath, name = null } = {}) {
         <input class="field" id="destp" value="${esc(dest)}" spellcheck="false"></div></div>
       <label class="chk"><input type="checkbox" id="rs-smart" ${!r || r.smartFilter ? 'checked' : ''}> Ne pas télécharger deux fois le même épisode</label>
       ${r ? '' : '<label class="chk"><input type="checkbox" id="rs-old"> Télécharger aussi les épisodes déjà publiés dans le flux</label>'}
-      <label class="chk"><input type="checkbox" id="rs-start" ${stopped ? '' : 'checked'}> Démarrer les téléchargements immédiatement</label>`,
+      <label class="chk"><input type="checkbox" id="rs-start" ${stopped ? '' : 'checked'}> Démarrer les téléchargements immédiatement</label>
+      ${ruleAdvancedHTML(r ? { ...r, name } : null)}`,
     onOpen: (bd) => {
+      bd.querySelector('.dlg').dataset.rule = name || '';
       const url = bd.querySelector('#rs-url'), nm = bd.querySelector('#rs-name');
+      if (nm && preUrl) nm.value = nameFromUrl(preUrl);
       if (nm) {
         nm.addEventListener('input', () => { nm.dataset.touched = '1'; });
         url.addEventListener('input', () => { if (!nm.dataset.touched) nm.value = nameFromUrl(url.value); });
@@ -797,11 +841,25 @@ function subscribeDialog({ dest = state.defaultPath, name = null } = {}) {
       if (!destp.startsWith('/')) { err('Le dossier doit être un chemin complet (ex. /share/Download).'); return false; }
       const must = bd.querySelector('#rs-must').value.trim(), not = bd.querySelector('#rs-not').value.trim();
       const smart = bd.querySelector('#rs-smart').checked, start = bd.querySelector('#rs-start').checked;
+      // Options avancées vérifiées avant tout appel à qBittorrent
+      const advErr = ruleAdvancedApply(bd, { mustContain: must, mustNotContain: not });
+      if (advErr) { err(advErr); return false; }
       if (r) {
         const def = { ...r, mustContain: must, mustNotContain: not, smartFilter: smart, savePath: destp, addPaused: !start,
           torrentParams: { ...(r.torrentParams || {}), save_path: destp, stopped: !start } };
+        const bad = ruleAdvancedApply(bd, def);
+        if (bad) { err(bad); return false; }
+        const newName = (bd.querySelector('#ra-name') || {}).value?.trim() || name;
+        if (newName !== name) {
+          if (/\\/.test(newName)) { err('Nom invalide (le caractère \\ est interdit).'); return false; }
+          if (rss.rules[newName]) { err('Un abonnement porte déjà ce nom.'); return false; }
+        }
         const res = await post('rss/setRule', { ruleName: name, ruleDef: JSON.stringify(def) });
         if (!res.ok) { err('qBittorrent a refusé la modification.'); return false; }
+        if (newName !== name) {
+          const rr = await post('rss/renameRule', { ruleName: name, newRuleName: newName });
+          if (!rr.ok) { err('Modifications enregistrées, mais le renommage a été refusé.'); loadRss(); return false; }
+        }
         toast('Abonnement mis à jour'); loadRss(); return;
       }
       const url = toFeedUrl(bd.querySelector('#rs-url').value);
@@ -835,6 +893,8 @@ function subscribeDialog({ dest = state.defaultPath, name = null } = {}) {
       if (!old) await post('rss/markAsRead', { itemPath: feedPath });
       const def = { enabled: true, mustContain: must, mustNotContain: not, useRegex: false, episodeFilter: '', smartFilter: smart,
         affectedFeeds: [url], savePath: destp, addPaused: !start, torrentParams: { save_path: destp, stopped: !start } };
+      const bad = ruleAdvancedApply(bd, def);
+      if (bad) { ok.textContent = 'S\'abonner'; err(bad); if (created) await post('rss/removeItem', { path: feedPath }); return false; }
       const res = await post('rss/setRule', { ruleName: nm, ruleDef: JSON.stringify(def) });
       if (!res.ok) { ok.textContent = 'S\'abonner'; err('qBittorrent a refusé l\'abonnement.'); return false; }
       store.set('startNow', start);
@@ -864,29 +924,31 @@ function deleteRssDialog(name) {
 }
 
 /* ---------- Panneau de détails (comme Download Station) ---------- */
-const det = { hash: null, tab: store.get('dtab', 'info'), props: null, files: null, token: 0 };
+const det = { hash: null, tab: store.get('dtab', 'info'), props: null, files: null, webseeds: null, token: 0, sel: new Set() };
 const fmtDate = (s) => (s > 0 ? new Date(s * 1000).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'medium' }) : '—');
 function fmtDur(s) {
   if (!(s >= 0) || s >= 8640000) return '—';
   const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
   return [d && `${d} j`, (d || h) && `${h} h`, `${m} min`].filter(Boolean).join(' ');
 }
-function openDetails(hash) { det.hash = hash; det.props = det.files = det.trackers = det.peers = null; renderDetails(); loadDetails(); }
+function openDetails(hash) { if (det.hash !== hash) det.sel.clear(); det.hash = hash; det.props = det.files = det.trackers = det.peers = det.webseeds = null; renderDetails(); loadDetails(); }
 function closeDetails() { det.hash = null; renderDetails(); renderTorrentRows(); }
 async function loadDetails() {
   if (!det.hash || state.view !== 'torrents') return;
   const h = det.hash, tok = ++det.token;
   const json = (path) => api(path).then((r) => (r.ok ? r.json() : null));
   try {
-    const [p, f, tr, pe] = await Promise.all([
+    const [p, f, tr, pe, ws] = await Promise.all([
       json('torrents/properties?hash=' + h),
       json('torrents/files?hash=' + h),
       json('torrents/trackers?hash=' + h),
       det.tab === 'peers' ? json('sync/torrentPeers?rid=0&hash=' + h) : Promise.resolve(det.peers),
+      det.tab === 'webseeds' ? json('torrents/webseeds?hash=' + h) : Promise.resolve(det.webseeds),
     ]);
     if (tok !== det.token || h !== det.hash) return;
     det.props = p; det.files = f; det.trackers = tr;
     det.peers = det.tab === 'peers' ? (pe && pe.peers) || {} : null;
+    det.webseeds = det.tab === 'webseeds' ? ws || [] : null;
     renderDetails();
   } catch (_) {}
 }
@@ -902,7 +964,8 @@ function trackersHTML() {
     // qBittorrent 5.x : le message d'erreur peut être porté par chaque « endpoint »
     const msgs = [x.msg, ...((x.endpoints || []).map((e) => e.msg))].filter(Boolean);
     const n = (v) => (v >= 0 ? v : '—');
-    return `<tr>
+    const rid = pseudo[x.url] ? '' : `data-drow="t${esc(x.url)}"`;
+    return `<tr ${rid} class="${det.sel.has('t' + x.url) ? 'dsel' : ''}">
       <td><div class="name"><span title="${esc(x.url)}">${esc(pseudo[x.url] || x.url)}</span></div></td>
       <td><span class="st ${cls}">${label}</span></td>
       <td class="num">${n(x.num_seeds)}</td><td class="num">${n(x.num_leeches)}</td><td class="num hide-sm">${n(x.num_peers)}</td>
@@ -922,7 +985,8 @@ function peersHTML() {
   peers.sort((a, b) => (b.dl_speed - a.dl_speed) || (b.progress - a.progress));
   return `<table><thead><tr><th>Adresse</th><th class="hide-sm">Client</th><th>Progression</th><th class="num">Réception</th><th class="num">Envoi</th><th class="hide-md">Pays</th></tr></thead><tbody>${peers.map((x) => {
     const pct = Math.floor((x.progress || 0) * 1000) / 10;
-    return `<tr><td class="muted">${esc(x.ip)}:${x.port}</td><td class="hide-sm">${esc(x.client || '—')}</td>
+    const id = `p${x.ip.includes(':') ? `[${x.ip}]` : x.ip}:${x.port}`;
+    return `<tr data-drow="${esc(id)}" class="${det.sel.has(id) ? 'dsel' : ''}"><td class="muted">${esc(x.ip)}:${x.port}</td><td class="hide-sm">${esc(x.client || '—')}</td>
       <td><div class="prog ${pct >= 100 ? 'done' : ''}"><i style="width:${pct}%"></i><b>${pct.toLocaleString('fr-FR')} %</b></div></td>
       <td class="num">${fmtSpeed(x.dl_speed)}</td><td class="num">${fmtSpeed(x.up_speed)}</td><td class="hide-md">${esc(x.country || '—')}</td></tr>`;
   }).join('')}</tbody></table>`;
@@ -936,12 +1000,17 @@ function renderDetails() {
     b.classList.toggle('on', b.dataset.dtab === det.tab);
     if (b.dataset.dtab === 'files') b.textContent = 'Fichiers' + (det.files && det.files.length ? ` (${det.files.length})` : '');
     if (b.dataset.dtab === 'peers' && det.props) b.textContent = `Pairs (${(det.props.seeds || 0) + (det.props.peers || 0)})`;
+    if (b.dataset.dtab === 'webseeds' && det.webseeds) b.textContent = 'Sources HTTP' + (det.webseeds.length ? ` (${det.webseeds.length})` : '');
   });
   $('#dname').textContent = t ? t.name : '';
   const body = $('#dbody');
   if (!det.props && !det.files) { body.innerHTML = `<div class="empty" style="padding:30px">Chargement…</div>`; return; }
-  if (det.tab === 'peers' && det.peers === null) { body.innerHTML = `<div class="empty" style="padding:30px">Chargement…</div>`; return; }
-  body.innerHTML = det.tab === 'files' ? filesHTML(t) : det.tab === 'trackers' ? trackersHTML() : det.tab === 'peers' ? peersHTML() : infoHTML(t, det.props || {});
+  if ((det.tab === 'peers' && det.peers === null) || (det.tab === 'webseeds' && det.webseeds === null)) { body.innerHTML = `<div class="empty" style="padding:30px">Chargement…</div>`; return; }
+  // Le panneau est redessiné à chaque rafraîchissement : on garde la position de défilement
+  const top = body.scrollTop;
+  body.innerHTML = detToolHTML(det.tab) + (det.tab === 'files' ? filesHTML(t) : det.tab === 'trackers' ? trackersHTML() : det.tab === 'peers' ? peersHTML()
+    : det.tab === 'webseeds' ? webseedsHTML() : infoHTML(t, det.props || {}));
+  body.scrollTop = top;
 }
 function infoHTML(t, p) {
   const [label] = (t && ST[t.state]) || [t ? t.state : '—'];
@@ -962,8 +1031,10 @@ function infoHTML(t, p) {
     ['Sources', p.seeds_total >= 0 ? `${p.seeds} connectée${p.seeds > 1 ? 's' : ''} sur ${p.seeds_total}` : '—'],
     ['Pairs', p.peers_total >= 0 ? `${p.peers} connecté${p.peers > 1 ? 's' : ''} sur ${p.peers_total}` : '—'],
     ['Pièces', p.pieces_num > 0 ? `${p.pieces_have} / ${p.pieces_num} (${fmtSize(p.piece_size)})` : '—'],
+    ...infoExtraRows(t, p),
     // Valeurs longues : sur toute la largeur du panneau
     ['Dossier', p.save_path ? `<span class="folderlink" data-folder="${esc(normalize(p.save_path))}">${esc(normalize(p.save_path))}</span>` : '—', true, true],
+    ...infoHashRows(t),
   ];
   if (p.comment) {
     const c = p.comment.trim();
@@ -981,17 +1052,18 @@ function filesHTML(t) {
   const allOn = list.every((f) => f.priority > 0);
   return `<table><thead><tr>
       <th class="ck"><input type="checkbox" data-fprio-all ${allOn ? 'checked' : ''} title="Tout télécharger / ne rien télécharger"></th>
-      <th>Nom du fichier</th><th class="num">Taille</th><th class="hide-sm">Type</th><th>Progression</th><th class="hide-sm">Terminé</th>
+      <th>Nom du fichier</th><th class="num">Taille</th><th class="hide-sm">Type</th><th>Progression</th><th class="hide-sm">Priorité</th><th class="hide-sm">Terminé</th>
     </tr></thead><tbody>${list.map((f) => {
       const pct = Math.floor(f.progress * 1000) / 10, skip = f.priority === 0;
       const ext = (f.name.match(/\.([^./]{1,6})$/) || [])[1];
       const fin = skip ? 'Ignoré' : f.progress >= 1 ? 'Oui' : 'Non';
-      return `<tr class="${skip ? 'skip' : ''}">
+      return `<tr class="${skip ? 'skip' : ''}${det.sel.has('f' + f.idx) ? ' dsel' : ''}" data-drow="f${f.idx}">
         <td class="ck"><input type="checkbox" data-fprio="${f.idx}" ${skip ? '' : 'checked'} title="${skip ? 'Ne sera pas téléchargé' : 'Sera téléchargé'}"></td>
         <td><div class="name" title="${esc(f.name)}">${I.file(18)}<span>${esc(f.short)}</span></div></td>
         <td class="num">${fmtSize(f.size)}</td>
         <td class="hide-sm muted">${ext ? ext.toLowerCase() : '—'}</td>
         <td><div class="prog ${skip ? 'stop' : pct >= 100 ? 'done' : ''}"><i style="width:${pct}%"></i><b>${pct.toLocaleString('fr-FR')} %</b></div></td>
+        <td class="hide-sm">${esc(PRIO[f.priority] || f.priority)}</td>
         <td class="hide-sm">${fin}</td></tr>`;
     }).join('')}</tbody></table>`;
 }
@@ -1040,18 +1112,22 @@ function editItems(context = false) {
     '-', ['move', 'Déplacer vers un autre dossier…', I.newdir(), !s], ['recheck', 'Revérifier les fichiers', null, !s], ['reannounce', 'Réannoncer aux trackers', null, !s],
     '-', ['qtop', 'Haut de la file d\'attente', null, q], ['qup', 'Monter dans la file', null, q], ['qdown', 'Descendre dans la file', null, q], ['qbottom', 'Bas de la file d\'attente', null, q],
     '-', ['delete', 'Supprimer…', I.trash(), !s],
+    ...torrentExtraItems(s),
     ...(context ? [] : ['-', ['selall', 'Tout sélectionner', null, inList], ['invert', 'Inverser la sélection', null, inList],
-      '-', ['startall', 'Tout démarrer', I.play()], ['stopall', 'Tout arrêter', I.stop()]]),
+      '-', ['startall', 'Tout démarrer', I.play()], ['stopall', 'Tout arrêter', I.stop()],
+      sessionPaused() ? ['resumesession', 'Reprendre la session', I.play()] : ['pausesession', 'Suspendre la session (tous les torrents)', I.stop()]]),
   ];
 }
 function menus() {
   return [
     ['Fichier', [['addfile', 'Ajouter des fichiers .torrent…', I.upload()], ['addlink', 'Ajouter un lien magnet…', I.magnet(16)],
-      ['subscribe2', 'Nouvel abonnement RSS…', I.rss()], '-', ['logout', 'Déconnexion']]],
+      ['subscribe2', 'Nouvel abonnement RSS…', I.rss()], '-', ['creator', 'Créateur de torrent…'], ['magnethandler', 'Associer les liens magnet au navigateur…'],
+      '-', ['logout', 'Déconnexion'], ['shutdown', 'Quitter qBittorrent…']]],
     ['Édition', editItems()],
-    ['Affichage', [['vdl', 'Téléchargements'], ['vrss', 'Abonnements RSS', I.rss()], '-', ['log', 'Journal…'], ['stats', 'Statistiques…']]],
-    ['Outils', [['settings', 'Réglages…'], ['alt', 'Limites de vitesse alternatives', null, false, !!state.altSpeed], '-',
-      ['passwd', 'Mot de passe…'], ['advanced', 'Réglages avancés (interface classique)…']]],
+    ['Affichage', [['vdl', 'Téléchargements'], ['vrss', 'Abonnements RSS', I.rss()], ['vreader', 'Lecteur RSS'], '-', ['log', 'Journal…'], ['stats', 'Statistiques…'],
+      '-', ['titlespeed', 'Vitesse dans la barre de titre', null, false, !!store.get('titleSpeed', false)]]],
+    ['Outils', [['settings', 'Réglages…'], ['limits', 'Limites de vitesse globales…'], ['alt', 'Limites de vitesse alternatives', null, false, !!state.altSpeed], '-',
+      ['cookies', 'Gérer les cookies…'], '-', ['passwd', 'Mot de passe…']]],
     ['Aide', [['about', 'À propos…'], ['guide', 'Guide d\'utilisation'], ['issue', 'Signaler un problème']]],
   ];
 }
@@ -1059,27 +1135,47 @@ function menuHTML(items) {
   return items.map((it) => {
     if (it === '-') return '<hr>';
     if (it[0] === '#') return `<div class="mh">${esc(it[1])}</div>`;
-    const [act, label, icon, disabled, checked] = it;
-    const mark = checked !== undefined ? (checked ? '✓' : '') : (icon || '');
-    return `<button role="menuitem${checked !== undefined ? 'checkbox' : ''}" data-mact="${act}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}</button>`;
+    const [act, label, icon, disabled, checked, sub] = it;
+    const mark = checked !== undefined && checked !== null ? (checked ? '✓' : '') : (icon || '');
+    if (sub) return `<button role="menuitem" aria-haspopup="menu" data-msub="${esc(act)}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}<span class="sub">›</span></button>`;
+    return `<button role="menuitem${checked !== undefined && checked !== null ? 'checkbox' : ''}" data-mact="${esc(act)}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}</button>`;
   }).join('');
 }
 let openMenu = null;
-function closeMenu() { if (!openMenu) return; openMenu.el.remove(); if (openMenu.btn) openMenu.btn.classList.remove('open'); openMenu = null; }
+function closeSub() { if (openMenu && openMenu.subEl) { openMenu.subEl.remove(); openMenu.subBtn.classList.remove('open'); openMenu.subEl = openMenu.subBtn = null; } }
+function closeMenu() { if (!openMenu) return; closeSub(); openMenu.el.remove(); if (openMenu.btn) openMenu.btn.classList.remove('open'); openMenu = null; }
+function placeMenu(m, x, y, alt = null) {
+  const r = m.getBoundingClientRect();
+  // Si le menu dépasse à droite, on l'ouvre de l'autre côté (sous-menus)
+  const left = x + r.width > innerWidth - 4 && alt !== null ? alt - r.width : x;
+  m.style.left = Math.max(4, Math.min(left, innerWidth - r.width - 4)) + 'px';
+  m.style.top = Math.max(4, Math.min(y, innerHeight - r.height - 4)) + 'px';
+}
 function showMenu(items, x, y, btn = null) {
   closeMenu();
   const m = document.createElement('div');
   m.className = 'menu'; m.setAttribute('role', 'menu'); m.innerHTML = menuHTML(items);
   document.body.appendChild(m);
-  const r = m.getBoundingClientRect();
-  m.style.left = Math.max(4, Math.min(x, innerWidth - r.width - 4)) + 'px';
-  m.style.top = Math.max(4, Math.min(y, innerHeight - r.height - 4)) + 'px';
-  openMenu = { el: m, btn };
+  placeMenu(m, x, y);
+  // Sous-menus : retrouvés par leur action
+  const subs = {};
+  const walk = (list) => list.forEach((it) => { if (Array.isArray(it) && it[5]) { subs[it[0]] = it[5]; walk(it[5]); } });
+  walk(items);
+  openMenu = { el: m, btn, subs };
   if (btn) btn.classList.add('open');
 }
+function openSub(b) {
+  if (!openMenu || b.disabled || openMenu.subBtn === b) return;
+  closeSub();
+  const m = document.createElement('div');
+  m.className = 'menu'; m.setAttribute('role', 'menu'); m.innerHTML = menuHTML(openMenu.subs[b.dataset.msub] || []);
+  document.body.appendChild(m);
+  const r = b.getBoundingClientRect();
+  placeMenu(m, r.right - 2, r.top - 4, r.left + 2);
+  openMenu.subEl = m; openMenu.subBtn = b; b.classList.add('open');
+}
 async function openTopMenu(btn) {
-  // État des limites de vitesse alternatives, pour la coche du menu Outils
-  try { state.altSpeed = (await api('transfer/speedLimitsMode').then((r) => r.text())).trim() === '1'; } catch (_) {}
+  // L'état des limites alternatives (coche du menu Outils) vient de sync/maindata
   const all = menus(), i = btn.dataset.menu;
   const items = i === 'all' ? all.flatMap(([t, it], k) => [...(k ? ['-'] : []), ['#', t], ...it]) : all[i][1];
   const r = btn.getBoundingClientRect();
@@ -1090,37 +1186,47 @@ function renderMenubar() {
     + '<button class="mall" data-menu="all" aria-haspopup="menu">Menu ▾</button>';
 }
 async function runMenu(act) {
-  const hs = selHashes(), n = hs.length, p = (path, extra = {}) => post(path, { hashes: hs.join('|'), ...extra });
-  const done = (msg) => { toast(msg); setTimeout(poll, 400); };
+  const hs = selHashes(), n = hs.length, p = (path, extra = {}) => apiAct(path, { hashes: hs.join('|'), ...extra });
+  const done = (msg) => { if (msg) toast(msg); setTimeout(poll, 400); };
+  if (await runTorrentMenu(act, hs)) return;
   switch (act) {
     case 'addfile': return $('#pick').click();
     case 'addlink': return openAddDialog({ magnet: true });
     case 'subscribe2': return subscribeDialog({ dest: state.view === 'folder' ? state.path : state.defaultPath });
     case 'logout': return $('#logout').click();
+    case 'creator': return creatorDialog();
+    case 'magnethandler': return registerMagnetHandler();
+    case 'shutdown': return shutdownDialog();
+    case 'limits': return globalLimitsDialog();
     case 'start': case 'stop': { const ok = await torrentAction(act, hs); return done(ok ? (act === 'start' ? 'Démarré' : 'Arrêté') : 'Action refusée'); }
-    case 'force': await p('torrents/setForceStart', { value: 'true' }); return done(`Reprise forcée pour ${n} torrent${n > 1 ? 's' : ''}`);
+    case 'force': return (await p('torrents/setForceStart', { value: 'true' })) && done(`Reprise forcée pour ${n} torrent${n > 1 ? 's' : ''}`);
     case 'move': return moveDialog();
-    case 'recheck': await p('torrents/recheck'); return done('Vérification des fichiers lancée');
-    case 'reannounce': await p('torrents/reannounce'); return done('Annonce envoyée aux trackers');
-    case 'qtop': await p('torrents/topPrio'); return done('Placé en haut de la file');
-    case 'qup': await p('torrents/increasePrio'); return done('Monté dans la file');
-    case 'qdown': await p('torrents/decreasePrio'); return done('Descendu dans la file');
-    case 'qbottom': await p('torrents/bottomPrio'); return done('Placé en bas de la file');
+    case 'recheck': return (await p('torrents/recheck')) && done('Vérification des fichiers lancée');
+    case 'reannounce': return (await p('torrents/reannounce')) && done('Annonce envoyée aux trackers');
+    case 'qtop': return (await p('torrents/topPrio')) && done('Placé en haut de la file');
+    case 'qup': return (await p('torrents/increasePrio')) && done('Monté dans la file');
+    case 'qdown': return (await p('torrents/decreasePrio')) && done('Descendu dans la file');
+    case 'qbottom': return (await p('torrents/bottomPrio')) && done('Placé en bas de la file');
     case 'delete': return deleteDialog();
     case 'selall': case 'invert': {
       const list = visibleTorrents();
       if (act === 'selall') list.forEach((t) => state.sel.add(t.hash)); else list.forEach((t) => (state.sel.has(t.hash) ? state.sel.delete(t.hash) : state.sel.add(t.hash)));
       renderTorrentRows(); renderToolbar(); return renderStatus();
     }
-    case 'startall': await post('torrents/start', { hashes: 'all' }); return done('Tous les torrents ont été démarrés');
-    case 'stopall': await post('torrents/stop', { hashes: 'all' }); return done('Tous les torrents ont été arrêtés');
+    case 'startall': return (await apiAct('torrents/start', { hashes: 'all' })) && done('Tous les torrents ont été démarrés');
+    case 'stopall': return (await apiAct('torrents/stop', { hashes: 'all' })) && done('Tous les torrents ont été arrêtés');
+    case 'pausesession': return (await apiAct('transfer/pauseSession', {})) && done('Session suspendue : plus aucun échange jusqu\'à la reprise');
+    case 'resumesession': return (await apiAct('transfer/resumeSession', {})) && done('Session reprise');
+    case 'titlespeed': store.set('titleSpeed', !store.get('titleSpeed', false)); return updateTitle();
     case 'vdl': return showTorrents('all');
-    case 'vrss': return showRss();
+    case 'vrss': state.rssTab = 'subs'; store.set('rssTab', 'subs'); return showRss();
+    case 'vreader': state.rssTab = 'reader'; store.set('rssTab', 'reader'); return showRss();
+    case 'cookies': return cookiesDialog();
     case 'log': return logDialog();
     case 'stats': return statsDialog();
     case 'settings': return settingsDialog();
     case 'alt': {
-      await post('transfer/toggleSpeedLimitsMode', {});
+      if (!(await apiAct('transfer/toggleSpeedLimitsMode', {}))) return;
       const on = (await api('transfer/speedLimitsMode').then((r) => r.text())).trim() === '1';
       state.altSpeed = on;
       return toast(on ? 'Limites de vitesse alternatives activées' : 'Limites de vitesse normales rétablies');
@@ -1135,6 +1241,8 @@ async function runMenu(act) {
 document.addEventListener('click', (e) => {
   const mb = e.target.closest('[data-menu]');
   if (mb) { if (openMenu && openMenu.btn === mb) closeMenu(); else openTopMenu(mb); return; }
+  const ms = e.target.closest('.menu [data-msub]');
+  if (ms) { openSub(ms); return; }
   const mi = e.target.closest('.menu [data-mact]');
   if (mi) { closeMenu(); runMenu(mi.dataset.mact); return; }
   if (openMenu && !e.target.closest('.menu')) closeMenu();
@@ -1143,6 +1251,9 @@ document.addEventListener('click', (e) => {
 document.addEventListener('mouseover', (e) => {
   const mb = e.target.closest('#menubar [data-menu]');
   if (mb && openMenu && openMenu.btn && openMenu.btn !== mb && mb.dataset.menu !== 'all') openTopMenu(mb);
+  // Survol d'un élément du menu principal : ouvre son sous-menu, ou ferme celui qui est ouvert
+  const it = e.target.closest('.menu button');
+  if (it && openMenu && it.parentElement === openMenu.el) { if (it.dataset.msub) openSub(it); else closeSub(); }
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
 // Clic droit sur un torrent : menu Édition
@@ -1172,17 +1283,7 @@ function moveDialog() {
     },
   });
 }
-async function logDialog() {
-  const list = await api('log/main?last_known_id=-1').then((r) => r.json());
-  const T = { 1: ['Normal', ''], 2: ['Info', ''], 4: ['Avertissement', 'warn'], 8: ['Critique', 'crit'] };
-  const rows = list.slice(-400).reverse().map((l) => {
-    const [label, cls] = T[l.type] || ['—', ''];
-    return `<tr class="${cls}"><td class="muted" style="white-space:nowrap">${new Date(l.timestamp * 1000).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'medium' })}</td>
-      <td style="white-space:nowrap">${label}</td><td style="overflow-wrap:anywhere">${esc(l.message)}</td></tr>`;
-  }).join('');
-  dialog({ title: 'Journal de qBittorrent', ok: 'Fermer', cancel: false, wide: true,
-    body: `<div style="max-height:62vh;overflow:auto;margin:-16px -18px 0"><table class="logt"><thead><tr><th>Date</th><th>Type</th><th>Message</th></tr></thead><tbody>${rows || '<tr><td colspan="3">Journal vide.</td></tr>'}</tbody></table></div>` });
-}
+// Journal : explorer/outils.js (logDialog)
 async function statsDialog() {
   const d = await api('sync/maindata?rid=0').then((r) => r.json());
   const s = d.server_state || {}, n = Object.keys(d.torrents || {}).length;
@@ -1294,6 +1395,7 @@ const SETTINGS = [
     ['!advanced', 'Tous les autres réglages (interface classique)…'],
   ]],
 ];
+mergeSettings(SETTINGS); // réglages complémentaires : explorer/reglages.js
 // Notification web : programme externe de qBittorrent pointant vers notify.sh du paquet
 // Accès par le proxy de QTS (…/qbittorrent/, myQNAPcloud Link) plutôt que par le port 8085
 const VIA_QTS = location.pathname.replace(/[^/]*$/, '') !== '/';
@@ -1328,13 +1430,17 @@ function settingHTML(f, p) {
       <label class="chk"><input type="checkbox" data-wh="finished" ${w.finished ? 'checked' : ''}> Quand un téléchargement est terminé</label>
       ${w.foreign ? '<p>Un autre programme externe est configuré dans qBittorrent : il sera remplacé si vous activez la notification web pour le même évènement.</p>' : ''}`;
   }
+  if (type === 'ro') return `<div class="srow"><label>${esc(label)}</label><div class="muted" style="padding:6px 0">${esc(o.fmt ? o.fmt(p) : String(p[k] ?? '—'))}</div></div>`;
+  if (type === 'area') return `<div class="srow full"${dep}><label for="s-${k}">${esc(label)}${hint}</label><textarea class="field" id="s-${k}" data-k="${k}" rows="4" spellcheck="false">${esc(p[k] || '')}</textarea></div>`;
+  if (type === 'watch') return watchHTML(p);
+  if (type === 'iface') return `<div class="srow"${dep}><label for="s-${k}">${esc(label)}${hint}</label><select class="field" id="s-${k}" data-k="${k}"><option value="${esc(p[k] || '')}">${esc(p[k] || 'Toutes les interfaces')}</option></select></div>`;
   if (type === 'path') return `<div class="srow full"${dep}><label for="s-${k}">${esc(label)}</label><input class="field" id="s-${k}" data-k="${k}" value="${esc(normalize(p[k] || ''))}" spellcheck="false"></div>`;
   if (type === 'select') return `<div class="srow"${dep}><label for="s-${k}">${esc(label)}${hint}</label><select class="field" id="s-${k}" data-k="${k}">${o.options.map(([v, l]) => `<option value="${v}" ${String(p[k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
   if (type === 'schedule') return `<div class="srow"${dep}><label>${esc(label)}</label><div class="sched" data-k="schedule">
       de <input class="field" type="time" data-part="from" value="${pad2(p.schedule_from_hour)}:${pad2(p.schedule_from_min)}">
       à <input class="field" type="time" data-part="to" value="${pad2(p.schedule_to_hour)}:${pad2(p.schedule_to_min)}">
       <select class="field" data-part="days">${DAYS.map(([v, l]) => `<option value="${v}" ${p.scheduler_days === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>`;
-  const val = type === 'rate' ? Math.round((p[k] || 0) / 1024) : p[k];
+  const val = type === 'rate' ? Math.round((p[k] || 0) / 1024) : o.scale ? Math.round((p[k] || 0) / o.scale) : p[k];
   const unit = type === 'rate' ? 'Kio/s' : '';
   return `<div class="srow"${dep}><label for="s-${k}">${esc(label)}${hint}</label><div class="unit"><input class="field" id="s-${k}" data-k="${k}" type="number"
     ${type === 'float' ? 'step="0.1"' : 'step="1"'} ${o.min !== undefined ? `min="${o.min}"` : ''} ${o.max !== undefined ? `max="${o.max}"` : ''} value="${esc(val ?? '')}">${unit}</div></div>`;
@@ -1357,11 +1463,16 @@ async function settingsDialog(tab = 'dl') {
         const src = bd.querySelector(`[data-k="${el.dataset.dep}"]`);
         const on = src.checked && !src.disabled;
         el.classList.toggle('off', !on);
-        el.querySelectorAll('input, select').forEach((i) => (i.disabled = !on));
+        el.querySelectorAll('input, select, textarea').forEach((i) => (i.disabled = !on));
       }));
       bd.addEventListener('click', (e) => {
         const t = e.target.closest('[data-stab]'); if (t) show(t.dataset.stab);
-        const a = e.target.closest('[data-sact]'); if (a) { if (a.dataset.sact === 'passwd') passwordDialog(false); else location.href = 'classic.html#reglages'; }
+        const a = e.target.closest('[data-sact]');
+        if (a) {
+          if (a.dataset.sact === 'passwd') passwordDialog(false);
+          else if (a.dataset.sact === 'advanced') location.href = 'classic.html#reglages';
+          else settingsExtraAction(a.dataset.sact, bd, a);
+        }
       });
       bd.addEventListener('change', deps);
       // HTTPS : sans objet quand on passe par le proxy de QTS (il couperait cet accès)
@@ -1376,7 +1487,7 @@ async function settingsDialog(tab = 'dl') {
         h.disabled = true;
         h.closest('label').insertAdjacentHTML('afterend', '<p>Aucun certificat disponible : redémarrez qBittorrent depuis l\'App Center pour qu\'il prépare celui du NAS.</p>');
       }
-      show(tab); deps();
+      show(tab); deps(); fillIfaces(bd, p);
       bd.querySelector('[data-ok]').focus();
     },
     onOk: async (bd, err) => {
@@ -1392,6 +1503,13 @@ async function settingsDialog(tab = 'dl') {
         }
         const [, type, label, o = {}] = types[k];
         let v;
+        if (type === 'watch') {
+          try { v = readWatch(el); } catch (e) { err(e.message); show(bd, 'scan_dirs'); return false; }
+          if (!sameJSON(v, p.scan_dirs)) diff.scan_dirs = v;
+          continue;
+        }
+        if (type === 'area') { v = el.value.split(/\r?\n/).map((x) => x.trimEnd()).join('\n').trim(); if (el.disabled || v === (p[k] || '').trim()) continue; diff[k] = v; continue; }
+        if (type === 'iface') { if (el.value !== (p[k] || '')) diff[k] = el.value; continue; }
         if (type === 'webhook') {
           const url = el.value.trim();
           if (url && !/^https?:\/\/[^\s"]+$/.test(url)) { err('« Adresse du webhook » : adresse web invalide (https://…).'); show(bd, k); return false; }
@@ -1408,7 +1526,7 @@ async function settingsDialog(tab = 'dl') {
         if (type === 'text') { v = el.value.trim(); if (el.disabled || v === (p[k] || '')) continue; diff[k] = v; continue; }
         if (type === 'password') { if (!el.disabled && el.value) diff[k] = el.value; continue; }
         if (type === 'bool') v = el.checked;
-        else if (type === 'select') v = typeof p[k] === 'number' ? Number(el.value) : el.value;
+        else if (type === 'select') v = typeof p[k] === 'number' ? Number(el.value) : typeof p[k] === 'boolean' ? el.value === 'true' : el.value;
         else if (type === 'path') {
           v = el.value.trim().replace(/\/+$/, '');
           if (el.disabled) continue;
@@ -1421,7 +1539,7 @@ async function settingsDialog(tab = 'dl') {
           if (Number.isNaN(num) || (o.min !== undefined && num < o.min) || (o.max !== undefined && num > o.max)) {
             err(`« ${label} » : valeur invalide${o.min !== undefined ? ` (minimum ${o.min}${o.max !== undefined ? `, maximum ${o.max}` : ''})` : ''}.`); show(bd, k); return false;
           }
-          v = type === 'rate' ? num * 1024 : num;
+          v = type === 'rate' ? num * 1024 : o.scale ? num * o.scale : num;
         }
         if (v !== p[k]) diff[k] = v;
       }
@@ -1483,7 +1601,7 @@ function freeHTML() {
   return `<span class="st ${cls}" title="Espace libre dans le dossier de téléchargement par défaut">Espace libre : ${fmtSize(state.free)}</span>`;
 }
 
-function openAddDialog({ files = [], nas = [], magnet = false }) {
+function openAddDialog({ files = [], nas = [], magnet = false, links = [] }) {
   const dest = state.view === 'folder' && state.path ? state.path : state.defaultPath;
   const items = [
     ...files.map((f) => `<li>${I.torrent(18)}<span>${esc(f.name)}</span><small>depuis le PC</small></li>`),
@@ -1493,11 +1611,12 @@ function openAddDialog({ files = [], nas = [], magnet = false }) {
   dialog({
     title: magnet ? 'Ajouter des liens magnet' : `Ajouter ${count} torrent${count > 1 ? 's' : ''}`,
     ok: 'Ajouter',
-    body: `${magnet ? `<label>Liens magnet ou adresses de fichiers .torrent (un par ligne)<textarea id="mg" rows="5" placeholder="magnet:?xt=urn:btih:…"></textarea></label>` : `<ul class="addlist">${items}</ul>`}
+    body: `${magnet ? `<label>Liens magnet ou adresses de fichiers .torrent (un par ligne)<textarea id="mg" rows="5" placeholder="magnet:?xt=urn:btih:…">${esc(links.join('\n'))}</textarea></label>` : `<ul class="addlist">${items}</ul>`}
       <div class="dest">${I.folder(28, isVirtual(dest))}<div style="flex:1;min-width:0;display:grid;gap:4px"><small>Enregistrer dans</small>
         <input class="field" id="destp" value="${esc(dest)}" spellcheck="false">
         ${normalize(state.defaultPath) !== dest ? `<small><a href="#" id="usedef" style="color:var(--blue)">Utiliser le dossier par défaut (${esc(relPath(state.defaultPath))})</a></small>` : ''}
         <small id="space" aria-live="polite"></small></div></div>
+      ${addCatTagHTML()}
       <label class="chk"><input type="checkbox" id="startnow" ${store.get('startNow', true) ? 'checked' : ''}> Démarrer le téléchargement immédiatement</label>`,
     onOpen: (bd) => {
       const d = bd.querySelector('#usedef'), destIn = bd.querySelector('#destp');
@@ -1534,6 +1653,10 @@ function openAddDialog({ files = [], nas = [], magnet = false }) {
       for (const f of files) fd.append('torrents', f, f.name);
       if (urls.length) fd.append('urls', urls.join('\n'));
       fd.append('savepath', dest);
+      const cat = bd.querySelector('#add-cat').value, tags = bd.querySelector('#add-tags').value.split(',').map((x) => x.trim()).filter(Boolean);
+      store.set('addCat', cat);
+      if (cat) fd.append('category', cat);
+      if (tags.length) fd.append('tags', tags.join(','));
       fd.append('autoTMM', 'false');
       fd.append('stopped', String(!startNow));
       fd.append('paused', String(!startNow));
@@ -1590,6 +1713,8 @@ document.addEventListener('click', async (e) => {
   const t = e.target;
   // Abonnements RSS
   if (t.closest('[data-view=rss]')) return showRss();
+  const rt = t.closest('[data-rtab]');
+  if (rt) { state.rssTab = rt.dataset.rtab; store.set('rssTab', state.rssTab); renderToolbar(); renderRssView(); return renderStatus(); }
   const re = t.closest('[data-rss-edit]');
   if (re) return subscribeDialog({ name: re.dataset.rssEdit });
   const rd = t.closest('[data-rss-del]');
@@ -1600,6 +1725,8 @@ document.addEventListener('click', async (e) => {
     toast(res.ok ? (t.checked ? `« ${n} » réactivé` : `« ${n} » suspendu : plus de téléchargement automatique`) : 'Modification refusée', !res.ok);
     return loadRss();
   }
+  const cs = t.closest('[data-clearside]');
+  if (cs) { state[cs.dataset.clearside] = null; store.set('sidesel', { cat: state.cat, tag: state.tag, tracker: state.tracker }); return showTorrents(state.filter); }
   const f = t.closest('[data-filter]');
   if (f) return showTorrents(f.dataset.filter);
   const tn = t.closest('#tree .tn');
@@ -1641,8 +1768,9 @@ document.addEventListener('click', async (e) => {
   // Panneau de détails : onglets, fermeture, fichiers à télécharger ou non
   const dt = t.closest('[data-dtab]');
   if (dt) {
-    det.tab = dt.dataset.dtab; store.set('dtab', det.tab);
+    det.tab = dt.dataset.dtab; store.set('dtab', det.tab); det.sel.clear();
     if (det.tab === 'peers') { det.peers = null; loadDetails(); }
+    if (det.tab === 'webseeds') { det.webseeds = null; loadDetails(); }
     return renderDetails();
   }
   if (t.closest('[data-act=closedet]')) return closeDetails();
@@ -1652,7 +1780,7 @@ document.addEventListener('click', async (e) => {
   // Liste des torrents : un clic sur la ligne sélectionne ce torrent et affiche
   // ses détails ; la case à cocher permet d'en sélectionner plusieurs.
   const tr = t.closest('tr[data-hash]');
-  if (tr && !t.closest('[data-folder]')) {
+  if (tr && !t.closest('[data-folder], [data-cat], [data-tag]')) {
     const h = tr.dataset.hash;
     if (t.matches('input[type=checkbox]')) state.sel.has(h) ? state.sel.delete(h) : state.sel.add(h);
     else { state.sel = new Set([h]); openDetails(h); }
@@ -1720,6 +1848,7 @@ window.addEventListener('dragover', (e) => e.preventDefault());
 window.addEventListener('drop', (e) => e.preventDefault());
 
 $('#burger').onclick = () => document.body.classList.toggle('side-open');
+$('#speeds').onclick = () => globalLimitsDialog();
 $('#logout').onclick = async () => { try { await post('auth/logout', {}); } catch (_) {} location.reload(); };
 const passwordDialog = (forced = false) => dialog({
   title: forced ? 'Choisissez votre mot de passe' : 'Changer le mot de passe', ok: 'Enregistrer', forced,
@@ -1752,14 +1881,14 @@ $('#classic').onclick = () => { location.href = 'classic.html'; };
 /* ---------- Rafraîchissement ---------- */
 let polling = false;
 async function poll() {
-  if (polling || document.hidden) return;
+  if (polling || document.hidden || state.halted) return; // halted : qBittorrent quitté depuis l'interface
   polling = true;
   try {
-    const [tl, tr] = await Promise.all([api('torrents/info').then((r) => r.json()), api('transfer/info').then((r) => r.json())]);
-    state.torrents = tl;
+    const tr = await syncMain();
     $('#spd-dl').textContent = '↓ ' + fmtSpeed(tr.dl_info_speed);
     $('#spd-up').textContent = '↑ ' + fmtSpeed(tr.up_info_speed);
     state.conn = tr;
+    updateTitle();
     if (!state.freeAt || Date.now() - state.freeAt > 30000) { state.freeAt = Date.now(); freeSpace(state.defaultPath).then((f) => { state.free = f; }); }
     renderFilters();
     if (state.view === 'torrents') {
@@ -1769,8 +1898,12 @@ async function poll() {
       if (det.hash) { if (state.torrents.some((x) => x.hash === det.hash)) loadDetails(); else renderDetails(); }
     }
     if (state.view === 'rss' && Date.now() - rss.last > 10000 && !document.querySelector('.backdrop')) loadRss();
+    if (state.offline) { state.offline = 0; renderToolbar(); }
     renderStatus();
-  } catch (_) {}
+  } catch (e) {
+    // qBittorrent arrêté, NAS injoignable… : signalé dans la barre d'état après deux échecs
+    if (e.message !== 'session') { state.offline = (state.offline || 0) + 1; if (state.offline >= 2) renderStatus(); }
+  }
   polling = false;
 }
 
@@ -1788,6 +1921,8 @@ async function poll() {
   if (!tree.kids.get(ROOT)?.length) $('#tree').innerHTML = `<div class="tree-msg">Impossible de lire ${esc(ROOT)}.</div>`;
   else renderTree();
   await poll();
+  handleDownloadHash(); // lien magnet ouvert depuis le navigateur (…#download=magnet:…)
+  window.addEventListener('hashchange', handleDownloadHash); // onglet déjà ouvert
   setInterval(poll, 2000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 })();

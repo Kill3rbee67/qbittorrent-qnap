@@ -15,13 +15,19 @@ Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorr
   - fichiers `.torrent` déjà présents sur le NAS (cocher ou double-cliquer).
 - **Espace disque** : l'espace libre du dossier de destination et la taille des torrents sont affichés avant l'ajout, avec une alerte s'il n'y a pas assez de place ; l'espace libre reste visible dans la barre d'état.
 - **Création de dossiers** à la volée : le dossier est créé au premier téléchargement.
-- **Barre de menus et réglages** comme dans qBittorrent : Fichier, Édition (forcer la reprise, déplacer, revérifier, file d'attente…), Affichage (journal, statistiques), Outils (réglages, limites de vitesse alternatives), avec un clic droit sur les torrents. La fenêtre **Réglages** regroupe en français les réglages les plus utiles : téléchargements simultanés, vitesses et horaires, port, partage, RSS, notifications, HTTPS.
-- **Abonnements RSS** : depuis le dossier d'une série, « S'abonner (RSS) » avec l'adresse d'une recherche, et chaque nouvel épisode publié est téléchargé automatiquement dans ce dossier.
+- **Toutes les fonctions de qBittorrent, en français**, sans passer par l'interface d'origine :
+  - barre de menus (Fichier, Édition, Affichage, Outils, Aide) et clic droit sur les torrents : renommer, déplacer, catégorie, étiquettes, limites de vitesse et de ratio, gestion automatique, ordre séquentiel, premiers et derniers morceaux, super partage, copier (nom, hash, lien magnet…), exporter le `.torrent`, file d'attente, suspendre la session ;
+  - panneau de détails : informations complètes, fichiers (4 priorités, renommage d'un fichier, d'un dossier ou de plusieurs fichiers à la fois), trackers, pairs et sources HTTP modifiables ;
+  - barre latérale : 14 filtres d'état, catégories et sous-catégories, étiquettes, trackers, avec leurs menus ;
+  - **Réglages** complets (environ 190 options, dont les réglages avancés de libtorrent et les dossiers surveillés) ; les réglages qui protègent l'accès sont affichés en lecture seule ;
+  - limites de vitesse globales et alternatives, journal filtrable, statistiques, créateur de torrent, cookies, association des liens magnet au navigateur.
+- **RSS** : abonnements par dossier (« S'abonner (RSS) » depuis le dossier d'une série : chaque nouvel épisode y est téléchargé automatiquement), avec options avancées (expressions régulières, filtre d'épisode, catégorie, étiquettes…), et **lecteur RSS** pour parcourir les articles des flux et en télécharger un à la main.
 - **Notifications** par e-mail (téléchargement terminé) ou par webhook (Discord, Slack, Mattermost, ntfy, Home Assistant…) à chaque nouveau torrent ou téléchargement terminé.
-- **Suivi des téléchargements** : progression, vitesses, temps restant, détail par fichier, trackers et pairs, filtres (en cours, terminés, arrêtés, en erreur).
+- **Suivi des téléchargements** : progression, vitesses, temps restant, colonnes triables, détail par fichier, trackers et pairs.
 - **Accès à distance par myQNAPcloud Link** : l'interface est aussi servie par QTS à l'adresse `/qbittorrent/`, sans ouvrir de port sur la box.
 - **HTTPS en option**, avec le certificat du NAS.
-- L'**interface d'origine** de qBittorrent (en français) est incluse : bouton « ⇄ Interface classique » pour y aller, bouton « ⇄ Interface explorateur » pour revenir.
+- L'**interface d'origine** de qBittorrent (en français) reste incluse en secours : bouton « ⇄ Interface classique » pour y aller, bouton « ⇄ Interface explorateur » pour revenir.
+- Non repris dans l'explorateur : le **moteur de recherche** de qBittorrent (il demande Python sur le NAS et des greffons propres à chaque site) et le graphique de vitesse.
 
 ![Liste des téléchargements](docs/captures/telechargements.png)
 
@@ -117,11 +123,15 @@ Pour que cela fonctionne, le paquet déclare `/qbittorrent` auprès du proxy de 
 
 ## Télécharger automatiquement une série (RSS)
 
-1. Sur votre site de torrents, faites la recherche qui correspond aux sorties voulues (par exemple `Ma Série 1080p`) et copiez l'adresse de son **flux RSS**. Sur certains sites, l'adresse de la page de résultats suffit : elle est convertie automatiquement.
+1. Faites la recherche qui correspond aux sorties voulues (par exemple `Ma Série 1080p`) et copiez l'adresse du **flux RSS** de la page de résultats d'un site de votre choix (souvent un lien ou une icône « RSS » sur cette page).
 2. Dans l'explorateur, ouvrez (ou créez) le dossier où ranger la série, puis cliquez sur **« S'abonner (RSS) »** et collez l'adresse.
 3. Facultatif : affinez avec « Le titre doit contenir » / « ne doit pas contenir » (`720p|Batch`…).
 
 Par défaut, seuls les **épisodes à venir** sont téléchargés (cochez « Télécharger aussi les épisodes déjà publiés » pour rattraper ceux du flux), et un même épisode n'est jamais téléchargé deux fois. La page **Abonnements RSS** permet de suspendre, modifier ou supprimer un abonnement, de forcer une vérification et de régler la fréquence de vérification des flux (30 minutes par défaut).
+
+Dans la fenêtre d'un abonnement, **Options avancées** donne accès aux réglages complets de la règle : expressions régulières, filtre d'épisode (`1x2;8-15;` = épisodes 2 et 8 à 15 de la saison 1), délai entre deux correspondances, catégorie, étiquettes, organisation des fichiers, flux surveillés, oubli des épisodes déjà téléchargés et aperçu des articles correspondants.
+
+L'onglet **Lecteur** (Affichage › Lecteur RSS) affiche les flux et leurs articles : nouveaux flux et dossiers, renommer, déplacer, modifier l'adresse, marquer comme lu, et télécharger un article d'un double-clic. Pour un site qui demande d'être connecté, ajoutez ses cookies dans Outils › Gérer les cookies.
 
 ## Notifications
 
@@ -228,10 +238,17 @@ src/shared/qBittorrent.sh       script de démarrage et d'arrêt utilisé par QT
 src/shared/notify.sh            envoi des notifications web (webhook)
 src/shared/webui/public/        page de connexion
 src/shared/webui/private/       interface « explorateur de fichiers » (l'interface d'origine y est ajoutée au build, sous classic.html)
+  index.html                    page principale : navigation, liste, menus, fenêtres de base
+  explorer/torrents.js          synchronisation, tri, clic droit, panneau de détails
+  explorer/reglages.js          réglages complémentaires (Outils › Réglages)
+  explorer/rss.js               lecteur RSS, flux, options avancées des abonnements, cookies
+  explorer/filtres.js           filtres d'état, catégories, étiquettes, trackers
+  explorer/outils.js            limites globales, journal, créateur de torrent, liens magnet, quitter
 src/icons/                      icônes de l'App Center
 src/package_routines            gabarit QDK (non modifié)
 build.sh                        construction des paquets
 tests/                          test de mise à jour et extraction d'un .qpkg
+docs/tests-manuels.md           tests à faire sur un vrai NAS avant une publication
 tools/make-repository.sh        génération de repository.xml (source d'applications)
 repository.xml                  source d'applications de l'App Center (mise à jour par la CI)
 assets/                         icônes affichées dans l'App Center

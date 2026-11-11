@@ -2,6 +2,28 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.4.0
+L'interface explorateur couvre désormais les fonctions de l'interface d'origine de qBittorrent 5.3 ; celle-ci reste disponible en secours (« ⇄ Interface classique »).
+
+Ajouté
+- Clic droit et menu Édition : renommer, catégorie, étiquettes, limiter la vitesse de téléchargement / d'envoi, limiter le ratio de partage, gestion de torrent automatique, ordre séquentiel, premiers et derniers morceaux en premier, mode super partage, copier (nom, info hash v1 / v2, lien magnet, ID, commentaire, chemin du contenu), exporter le `.torrent`, suspendre / reprendre la session.
+- Panneau de détails : informations complètes (hash, créateur, privé, limites, temps actif…), 4 priorités de fichiers, renommage d'un fichier, d'un dossier ou de plusieurs fichiers (rechercher / remplacer avec aperçu), trackers modifiables (ajouter, modifier, retirer, copier, réannoncer), pairs (ajouter, copier, bannir), nouvel onglet **Sources HTTP**.
+- Barre latérale : les 14 filtres d'état de qBittorrent, **catégories** (et sous-catégories), **étiquettes**, **trackers**, avec leurs menus (créer, modifier, retirer, retirer les inutilisés, démarrer / arrêter / retirer les torrents concernés) ; colonnes Catégorie et Étiquettes ; catégorie et étiquettes choisies dès l'ajout d'un torrent.
+- Réglages complets (environ 190 options) : ajout des torrents, gestion automatique, dossiers surveillés, proxy, I2P, filtrage IP, adresses bannies, torrents lents, trackers ajoutés automatiquement, filtre intelligent RSS, sessions, DNS dynamique, onglets **Avancé** (qBittorrent et libtorrent) et **Journal** ; courriel test, port aléatoire.
+- RSS : **lecteur** (flux, dossiers, articles, téléchargement d'un article), gestion des flux (ajouter, renommer, déplacer, modifier l'adresse, supprimer), options avancées des abonnements (expressions régulières, filtre d'épisode, catégorie, étiquettes, flux surveillés, aperçu…), **cookies**.
+- Outils : limites de vitesse globales (aussi par un clic sur les vitesses en haut), journal filtrable avec les pairs bloqués, **créateur de torrent**, association des liens magnet au navigateur (HTTPS), quitter qBittorrent ; Affichage › vitesse dans la barre de titre ; colonnes triables.
+
+Modifié
+- Rafraîchissement par `sync/maindata` (mise à jour incrémentale) ; « qBittorrent ne répond pas » affiché dans la barre d'état quand il est arrêté.
+- Les erreurs de qBittorrent sont expliquées (torrent supprimé entre-temps, conflit, qBittorrent arrêté) au lieu d'être ignorées.
+- Les réglages qui protègent l'accès (port, contournement de l'authentification, proxy de confiance, en-tête Host, CSRF, cookie sécurisé, clé d'API) sont affichés en lecture seule.
+- Libellés officiels de qBittorrent en français (« Étiquettes » pour les tags…).
+- Code de l'interface réparti dans `explorer/*.js`, chargés avec le numéro de version (pas de fichiers périmés en cache après une mise à jour).
+
+Corrigé
+- RSS : plus aucune conversion propre à un site de torrents ; l'adresse du flux est utilisée telle quelle et les textes d'aide sont neutres.
+- Retrait de trackers et de sources HTTP dont l'adresse contient `%` ou `|` (adresses encodées une à une, comme dans l'interface d'origine).
+
 ## 5.3.3.2
 - Mise à jour depuis la 5.3.3.0 : QTS ajoutait la nouvelle règle de proxy `/qbittorrent/` sans retirer l'ancienne (`/qbittorrent`), qui restait prioritaire, d'où l'erreur « Type de fichier inacceptable » persistante. Le paquet retire l'ancienne règle de `/etc/app_proxy.conf` au démarrage et recharge le proxy de QTS.
 

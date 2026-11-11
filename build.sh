@@ -110,7 +110,7 @@ chmod 755 "$WORK/pkg/shared/qBittorrent.sh" "$WORK/pkg/shared/notify.sh"
 
 # Version du paquet affichée dans « À propos » de l'interface explorateur
 UI="$WORK/pkg/shared/webui"
-sed -i "s/__QPKG_VER__/$VERSION/" "$UI/private/index.html"
+sed -i "s/__QPKG_VER__/$VERSION/g" "$UI/private/index.html"
 
 # Interface classique : copiée à côté de la nôtre (son index.html devient
 # classic.html). qnap-classic.js y ajoute le bouton de retour vers l'explorateur
