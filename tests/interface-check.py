@@ -3,7 +3,9 @@
 """Vérifications statiques de l'interface explorateur (sans navigateur, lancées par la CI).
 
 1. Couleurs : aucune couleur écrite en dur hors de public/explorer/themes.css.
-2. Contrastes : pour chaque thème, chaque couple texte / fond utilisé par l'interface
+2. Adresses externes : aucune ressource chargée depuis un autre site (polices, scripts,
+   feuilles de style, images, CDN) ; seul le lien vers la page du projet est permis.
+3. Contrastes : pour chaque thème, chaque couple texte / fond utilisé par l'interface
    atteint 4,5:1 (WCAG AA), calculé à partir des variables de themes.css
    (var() et color-mix() résolus ici).
 
@@ -49,7 +51,30 @@ for f in SOURCES:
 if not found:
     print(f'OK  aucune couleur en dur dans {len(SOURCES)} fichiers (hors themes.css)')
 
-# ---------------------------------------------------------------- 2. contrastes
+# ---------------------------------------------------------------- 2. adresses externes
+# Tous les fichiers de code de l'interface (html, js, css, y compris themes.css).
+CODE = sorted(glob.glob(os.path.join(ROOT, '**', '*.html'), recursive=True) + glob.glob(os.path.join(ROOT, '**', '*.js'), recursive=True)
+              + glob.glob(os.path.join(ROOT, '**', '*.css'), recursive=True))
+# Lien cliquable vers la page du projet (aide, signaler un problème) : pas une ressource
+ALLOWED_LINKS = {'github.com/Kill3rbee67/qbittorrent-qnap'}
+# http(s)://hôte, ou //hôte (adresse sans protocole) juste après un guillemet, « ( » ou « = »
+URL = re.compile(r'(?:https?://|(?<=["\'(=])//)([A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,})(/[^\s"\'`)<>]*)?')
+RESOURCE = re.compile(r'(?:\bsrc\s*=|\burl\s*\(|@import|<link\b[^>]*href\s*=|\bfetch\s*\(|\bimport\s*\(|new\s+(?:Worker|EventSource|WebSocket)\s*\()\s*["\']?\s*(?:https?:)?//', re.I)
+urls = 0
+for f in CODE:
+    rel = os.path.relpath(f, ROOT)
+    for n, line in enumerate(open(f, encoding='utf-8'), 1):
+        if RESOURCE.search(line):
+            fail(f'{rel}:{n} : ressource chargée depuis un autre site — embarquer le fichier et utiliser un chemin relatif'); urls += 1
+        for m in URL.finditer(line):
+            host_path = m.group(1) + (m.group(2) or '')
+            if m.group(1) in ('127.0.0.1', 'localhost') or any(host_path.startswith(a) for a in ALLOWED_LINKS):
+                continue
+            fail(f'{rel}:{n} : adresse externe « {m.group(0)} »'); urls += 1
+if not urls:
+    print(f'OK  aucune adresse externe dans {len(CODE)} fichiers de code (hors lien vers la page du projet)')
+
+# ---------------------------------------------------------------- 3. contrastes
 css = re.sub(r'/\*.*?\*/', '', open(THEMES_CSS, encoding='utf-8').read(), flags=re.S)
 blocks = []
 for sel, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css):
