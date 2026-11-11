@@ -200,11 +200,12 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
   .menubar > button { background:none; border:0; color:#fff; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:13.5px; white-space:nowrap; }
   .menubar > button:hover, .menubar > button.open { background:rgba(255,255,255,.18); }
   .menubar > .mall { display:none; }
-  .menu { position:fixed; z-index:40; min-width:250px; max-height:calc(100vh - 16px); overflow:auto; padding:4px 0; background:#fff; color:var(--text);
+  .menu { position:fixed; z-index:40; min-width:250px; max-height:calc(100vh - 12px); max-width:calc(100vw - 12px); overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; padding:4px 0; background:#fff; color:var(--text);
           border:1px solid var(--border); border-radius:6px; box-shadow:0 12px 32px rgba(15,30,50,.22); }
-  .menu button { display:flex; align-items:center; gap:10px; width:100%; padding:7px 16px 7px 10px; border:0; background:none; text-align:left; cursor:pointer; font-size:13.5px; white-space:nowrap; }
+  .menu button { display:flex; align-items:center; gap:10px; width:100%; padding:7px 16px 7px 10px; border:0; background:none; text-align:left; cursor:pointer; font-size:13.5px; white-space:normal; overflow-wrap:anywhere; }
   .menu button:hover:not(:disabled), .menu button:focus-visible { background:var(--hover); outline:none; }
-  .menu button:disabled { color:#a8b2bf; cursor:default; }
+  .menu button:disabled { color:#69788a; cursor:default; }
+  .menu button:disabled .mi, .menu button:disabled .sub { color:#8693a3; }
   .menu .mi { width:18px; display:flex; justify-content:center; color:var(--muted); flex:none; }
   .menu hr { border:0; border-top:1px solid var(--border); margin:4px 0; }
   .menu .mh { padding:8px 14px 3px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
@@ -1176,19 +1177,48 @@ function closeMenu(refocus = false) {
   closeSub(); openMenu.el.remove(); if (openMenu.btn) openMenu.btn.classList.remove('open'); openMenu = null;
   if (refocus && ret && ret.isConnected) ret.focus(); // Échap : retour à l'élément d'origine
 }
-function placeMenu(m, x, y, alt = null) {
-  const r = m.getBoundingClientRect();
-  // Si le menu dépasse à droite, on l'ouvre de l'autre côté (sous-menus)
-  const left = x + r.width > innerWidth - 4 && alt !== null ? alt - r.width : x;
-  m.style.left = Math.max(4, Math.min(left, innerWidth - r.width - 4)) + 'px';
-  m.style.top = Math.max(4, Math.min(y, innerHeight - r.height - 4)) + 'px';
+// Position des menus, toujours entièrement visibles (défilement interne s'ils sont trop longs) :
+//  - 'below' : menu déroulant, ouvert juste sous son onglet, jamais au-dessus ;
+//  - 'point' : menu contextuel, sous le pointeur, ou au-dessus s'il n'y a pas la place en dessous ;
+//  - 'side'  : sous-menu, à droite de son entrée, ou à gauche s'il dépasse ; aligné sur le bas
+//              de l'entrée s'il dépasse en bas.
+// a : { x, y } pour 'below' et 'point' ; rectangle de l'entrée parente pour 'side'.
+const MENU_MARGIN = 6;
+function placeMenu(m, mode, a) {
+  const M = MENU_MARGIN, vw = document.documentElement.clientWidth, vh = innerHeight;
+  Object.assign(m.style, { left: '0px', top: '0px', maxHeight: 'none' });
+  const w = m.offsetWidth, h = m.offsetHeight;
+  let left, top;
+  if (mode === 'side') {
+    left = a.right - 2;
+    if (left + w > vw - M) left = a.left + 2 - w; // pas la place à droite : à gauche de l'entrée
+    top = a.top - 4;
+    if (top + h > vh - M) top = a.bottom + 4 - h; // pas la place en bas : vers le haut
+  } else {
+    left = a.x;
+    if (left + w > vw - M) left = mode === 'point' && a.x - w >= M ? a.x - w : vw - w - M;
+    top = a.y;
+    if (mode === 'point' && top + h > vh - M) top = a.y - h >= M ? a.y - h : vh - h - M;
+  }
+  left = Math.max(M, Math.min(left, vw - w - M));
+  top = Math.max(M, top);
+  if (mode === 'below') top = Math.max(top, a.y); // jamais au-dessus de l'onglet
+  m.style.left = Math.round(left) + 'px';
+  m.style.top = Math.round(top) + 'px';
+  m.style.maxHeight = Math.max(80, Math.floor(vh - top - M)) + 'px';
 }
-function showMenu(items, x, y, btn = null) {
+function showMenu(items, x, y, btn = null, mode = btn ? 'below' : 'point') {
   closeMenu();
   const m = document.createElement('div');
   m.className = 'menu'; m.setAttribute('role', 'menu'); m.innerHTML = menuHTML(items);
   document.body.appendChild(m);
-  placeMenu(m, x, y);
+  placeMenu(m, mode, { x, y });
+  // Défilement du menu : le sous-menu ouvert suit son entrée, ou se ferme si elle sort de la vue
+  m.addEventListener('scroll', () => {
+    if (!openMenu || !openMenu.subEl) return;
+    const r = openMenu.subBtn.getBoundingClientRect(), mr = m.getBoundingClientRect();
+    if (r.bottom < mr.top || r.top > mr.bottom) closeSub(); else placeMenu(openMenu.subEl, 'side', r);
+  }, { passive: true });
   // Sous-menus : retrouvés par leur action
   const subs = {};
   const walk = (list) => list.forEach((it) => { if (Array.isArray(it) && it[5]) { subs[it[0]] = it[5]; walk(it[5]); } });
@@ -1202,8 +1232,7 @@ function openSub(b) {
   const m = document.createElement('div');
   m.className = 'menu'; m.setAttribute('role', 'menu'); m.innerHTML = menuHTML(openMenu.subs[b.dataset.msub] || []);
   document.body.appendChild(m);
-  const r = b.getBoundingClientRect();
-  placeMenu(m, r.right - 2, r.top - 4, r.left + 2);
+  placeMenu(m, 'side', b.getBoundingClientRect());
   openMenu.subEl = m; openMenu.subBtn = b; b.classList.add('open');
 }
 async function openTopMenu(btn) {
