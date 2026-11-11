@@ -38,7 +38,7 @@ function renderRssReader() {
     ${arts.slice(0, 1000).map((a) => {
       const id = a.feed.path + '/' + a.id;
       return `<tr data-rart="${esc(id)}" class="${id === state.rssArt ? 'sel' : ''}" style="${a.isRead ? '' : 'font-weight:600'}">
-        <td>${a.isRead ? '' : '<span title="Non lu" style="color:var(--blue)">●</span>'}</td>
+        <td>${a.isRead ? '' : '<span title="Non lu" style="color:var(--accent)">●</span>'}</td>
         <td><div class="name"><span title="${esc(a.title || '')}">${esc(a.title || '(sans titre)')}</span></div></td>
         ${state.rssFeed && !isFolderPath(state.rssFeed) ? '' : `<td class="hide-sm muted">${esc(base(a.feed.path.replace(/\\/g, '/')))}</td>`}
         <td class="hide-sm muted" style="white-space:nowrap">${a.date && !isNaN(Date.parse(a.date)) ? new Date(a.date).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</td></tr>`;
@@ -58,7 +58,7 @@ function renderRssDetail() {
   const box = document.getElementById('rdetail');
   if (!box) return;
   const sel = state.rssArt && rssArticleById(state.rssArt);
-  box.innerHTML = sel ? `<div style="border-top:1px solid var(--border);padding:12px 16px;max-height:40vh;overflow:auto;background:#fafbfd">
+  box.innerHTML = sel ? `<div style="border-top:1px solid var(--border);padding:12px 16px;max-height:40vh;overflow:auto;background:var(--panel-3)">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><strong style="flex:1;min-width:200px">${esc(sel.title || '')}</strong>
         ${sel.torrentURL || sel.link ? '<button class="btn primary" data-ract="download">Télécharger…</button>' : ''}
         ${sel.link && /^https?:/i.test(sel.link) ? `<a class="btn" href="${esc(sel.link)}" target="_blank" rel="noopener noreferrer">Ouvrir la page</a>` : ''}
@@ -211,7 +211,7 @@ function ruleAdvancedHTML(r) {
   const feeds = rss.feeds;
   const aff = new Set((r && r.affectedFeeds) || []);
   const layout = tp.content_layout ?? (r && r.torrentContentLayout) ?? '';
-  return `<details class="adv" style="border:1px solid var(--border);border-radius:6px;padding:8px 12px"><summary style="cursor:pointer;font-weight:600">Options avancées</summary>
+  return `<details class="adv" style="border:1px solid var(--border);border-radius:var(--radius-md);padding:8px 12px"><summary style="cursor:pointer;font-weight:600">Options avancées</summary>
     <div style="display:grid;gap:10px;margin-top:10px">
       ${r ? `<label>Nom de l'abonnement<input class="field" id="ra-name" value="${esc(r.name || '')}"></label>` : ''}
       <label class="chk"><input type="checkbox" id="ra-regex" ${r && r.useRegex ? 'checked' : ''}> Utiliser des expressions régulières dans les filtres</label>
@@ -222,7 +222,7 @@ function ruleAdvancedHTML(r) {
       <label>Étiquettes <i>(séparées par des virgules)</i><input class="field" id="ra-tags" value="${esc((tp.tags || []).join(', '))}"></label>
       <label>Organisation des fichiers<select class="field" id="ra-layout">${[['', 'Réglage global'], ['Original', 'Comme dans le torrent'], ['Subfolder', 'Toujours dans un sous-dossier'], ['NoSubfolder', 'Jamais de sous-dossier']]
         .map(([v, l]) => `<option value="${v}" ${v === layout ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-      ${r && feeds.length ? `<div><span>Flux surveillés par cet abonnement</span><div style="max-height:130px;overflow:auto;border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-top:4px">
+      ${r && feeds.length ? `<div><span>Flux surveillés par cet abonnement</span><div style="max-height:130px;overflow:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 8px;margin-top:4px">
         ${feeds.map((f) => `<label class="chk"><input type="checkbox" data-ra-feed="${esc(f.url)}" ${aff.has(f.url) ? 'checked' : ''}> ${esc(f.path.replace(/\\/g, ' › '))}</label>`).join('')}</div></div>` : ''}
       ${r ? `<label class="chk"><input type="checkbox" id="ra-forget"> Oublier les épisodes déjà téléchargés (${((r && r.previouslyMatchedEpisodes) || []).length})</label>
       <div><button type="button" class="btn" data-ra-preview>Voir les articles correspondants</button><div id="ra-prev" class="preview" style="margin-top:6px" hidden></div></div>` : ''}
@@ -262,7 +262,7 @@ document.addEventListener('click', async (e) => {
     const rows = Object.entries(d).flatMap(([feed, list]) => list.map((t) => `<tr><td>${esc(t)}</td><td class="muted">${esc(feed)}</td></tr>`));
     box.innerHTML = rows.length ? `<table>${rows.join('')}</table><div class="muted" style="padding:4px 8px;font-size:12px">D'après la règle enregistrée (avant vos modifications).</div>`
       : '<div class="muted" style="padding:8px">Aucun article des flux ne correspond à la règle enregistrée.</div>';
-  } catch (_) { box.innerHTML = '<div style="padding:8px;color:var(--red)">Le NAS ne répond pas.</div>'; }
+  } catch (_) { box.innerHTML = '<div style="padding:8px;color:var(--danger)">Le NAS ne répond pas.</div>'; }
 });
 
 /* ---------- Cookies (sites demandant une connexion pour les flux ou les .torrent) ---------- */

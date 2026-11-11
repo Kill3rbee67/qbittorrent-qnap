@@ -10,37 +10,38 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>qBittorrent – Connexion</title>
+<link rel="stylesheet" href="explorer/themes.css?v=__QPKG_VER__">
 <style>
-  :root { --blue:#1866c2; --blue-dark:#0e4c97; --bg:#e9eef5; --text:#1f2a37; --muted:#6b7a8c; --border:#cfd8e3; }
+  /* Couleurs, polices, arrondis et ombres : explorer/themes.css (variables) */
   * { box-sizing:border-box; }
   body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-         font:14px/1.4 "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color:var(--text);
-         background:linear-gradient(160deg,#1d74d8 0%,#0e4c97 55%,#0a356b 100%); padding:16px; }
-  .card { width:100%; max-width:360px; background:#fff; border-radius:10px; box-shadow:0 18px 50px rgba(0,0,0,.28); overflow:hidden; }
+         font:14px/1.4 var(--font-ui); color:var(--text);
+         background:var(--login-bg); background-image:var(--login-bg-image); padding:16px; }
+  .card { width:100%; max-width:360px; background:var(--panel); border-radius:var(--radius-xl); box-shadow:var(--login-shadow); overflow:hidden; }
   .head { display:flex; align-items:center; gap:12px; padding:22px 26px 6px; }
   .head svg { flex:none; }
-  .head h1 { margin:0; font-size:19px; font-weight:600; }
+  .head h1 { margin:0; font-size:19px; font-weight:600; font-family:var(--font-title); }
   .head p { margin:2px 0 0; color:var(--muted); font-size:12.5px; }
   form { padding:18px 26px 26px; display:grid; gap:14px; }
   label { display:grid; gap:5px; font-size:12.5px; color:var(--muted); }
-  input { font:inherit; padding:9px 11px; border:1px solid var(--border); border-radius:6px; color:var(--text); }
-  input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(24,102,194,.18); }
-  button { font:inherit; font-weight:600; padding:10px; border:0; border-radius:6px; background:var(--blue); color:#fff; cursor:pointer; }
-  button:hover { background:var(--blue-dark); }
+  input { font:inherit; padding:9px 11px; border:1px solid var(--login-input-border); border-radius:var(--radius-md); color:var(--text); background:var(--field-bg); }
+  input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--login-ring); }
+  button { font:inherit; font-weight:600; padding:10px; border:0; border-radius:var(--radius-md); background:var(--accent); color:var(--accent-text); cursor:pointer; }
+  button:hover { background:var(--accent-hover); }
   button:disabled { opacity:.6; cursor:wait; }
   .first { font-size:12.5px; color:var(--muted); }
-  .first summary { cursor:pointer; color:var(--blue); width:max-content; }
+  .first summary { cursor:pointer; color:var(--link); width:max-content; }
   .first[open] summary { margin-bottom:6px; }
-  .warn { margin:0 26px 22px; padding:10px 12px; border-radius:6px; font-size:12.5px; line-height:1.45; background:#fff6e8; border:1px solid #f0cf9f; color:#7a4b0c; }
-  .warn.bad { background:#fdecea; border-color:#f1b5ad; color:#8e2318; }
+  .warn { margin:0 26px 22px; padding:10px 12px; border-radius:6px; font-size:12.5px; line-height:1.45; background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); }
+  .warn.bad { background:var(--danger-bg); border-color:var(--danger-border); color:var(--danger-text); }
   .warn b { color:inherit; }
-  .err { min-height:18px; margin:0; color:#c0392b; font-size:12.5px; }
+  .err { min-height:18px; margin:0; color:var(--login-err); font-size:12.5px; }
 </style>
 </head>
 <body>
   <div class="card">
     <div class="head">
-      <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#1866c2"/><path d="M17 9h6v11h5l-8 9-8-9h5z" fill="#fff"/><rect x="11" y="30" width="18" height="2.6" rx="1.3" fill="#fff"/></svg>
+      <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="var(--accent)"/><path d="M17 9h6v11h5l-8 9-8-9h5z" fill="var(--accent-text)"/><rect x="11" y="30" width="18" height="2.6" rx="1.3" fill="var(--accent-text)"/></svg>
       <div><h1>qBittorrent</h1><p>Téléchargements du NAS</p></div>
     </div>
     <form id="f">

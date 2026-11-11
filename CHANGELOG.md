@@ -2,6 +2,20 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.5.2
+Préparation des thèmes (aucun changement visible : l'apparence d'origine, désormais appelée « Classique », est reproduite pixel pour pixel).
+
+Ajouté
+- `explorer/themes.css` : toutes les couleurs, polices, arrondis et ombres de l'interface explorateur et de la page de connexion sous forme de variables CSS, avec les blocs des futurs thèmes (Classique, Ardoise, Papier, Signal, Minimal, Futur, Terminal). Le fichier est dans `public/`, donc aussi lisible par la page de connexion.
+- `tests/interface-check.py`, lancé par la construction : échoue si une couleur est écrite en dur ailleurs que dans `themes.css`, et calcule pour chaque thème le contraste de chaque couple texte / fond (4,5:1 minimum).
+
+Modifié
+- Barres de progression : le pourcentage est écrit une seconde fois sur la partie remplie, avec sa propre couleur, pour rester lisible quel que soit le thème.
+- La version du paquet est ajoutée aussi aux adresses chargées par la page de connexion (pas de fichier périmé en cache).
+
+Corrigé
+- Panneau de détails : les lignes sélectionnées (fichiers, trackers, pairs, sources HTTP) n'étaient pas surlignées (variable de couleur inexistante).
+
 ## 5.3.5.1
 Corrigé
 - Le menu Édition de la barre du haut, plus long que la fenêtre, était remonté pour tenir à l'écran et recouvrait son onglet et la barre bleue. Les menus de la barre s'ouvrent désormais toujours juste sous leur onglet ; trop longs, ils défilent à l'intérieur (hauteur limitée à l'espace restant sous l'onglet).

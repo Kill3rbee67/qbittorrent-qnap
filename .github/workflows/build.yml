@@ -48,6 +48,9 @@ jobs:
       - name: Vérifier les empreintes des binaires amont
         run: ./build.sh --check
 
+      - name: Vérifier l'interface (couleurs en dur, contrastes des thèmes)
+        run: python3 tests/interface-check.py
+
       - name: Construire les paquets
         run: ./build.sh
 
