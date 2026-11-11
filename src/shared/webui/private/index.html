@@ -250,7 +250,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
   </div>
   <nav class="menubar" id="menubar" aria-label="Menus"></nav>
   <div class="grow"></div>
-  <div class="speeds"><span id="spd-dl">↓ —</span><span id="spd-up">↑ —</span></div>
+  <div class="speeds" id="speeds" title="Limites de vitesse globales" style="cursor:pointer"><span id="spd-dl">↓ —</span><span id="spd-up">↑ —</span></div>
   <button class="tbtn hide-sm" id="classic" title="Ouvrir l'interface d'origine de qBittorrent">⇄ Interface classique</button>
   <button class="tbtn" id="logout">Déconnexion</button>
 </header>
@@ -292,6 +292,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
 <script src="explorer/reglages.js?v=__QPKG_VER__"></script>
 <script src="explorer/rss.js?v=__QPKG_VER__"></script>
 <script src="explorer/filtres.js?v=__QPKG_VER__"></script>
+<script src="explorer/outils.js?v=__QPKG_VER__"></script>
 <script>
 'use strict';
 // Racine de navigation : /share sur un QNAP (modifiable avec ?root=/chemin pour les tests)
@@ -1120,11 +1121,12 @@ function editItems(context = false) {
 function menus() {
   return [
     ['Fichier', [['addfile', 'Ajouter des fichiers .torrent…', I.upload()], ['addlink', 'Ajouter un lien magnet…', I.magnet(16)],
-      ['subscribe2', 'Nouvel abonnement RSS…', I.rss()], '-', ['logout', 'Déconnexion']]],
+      ['subscribe2', 'Nouvel abonnement RSS…', I.rss()], '-', ['creator', 'Créateur de torrent…'], ['magnethandler', 'Associer les liens magnet au navigateur…'],
+      '-', ['logout', 'Déconnexion'], ['shutdown', 'Quitter qBittorrent…']]],
     ['Édition', editItems()],
     ['Affichage', [['vdl', 'Téléchargements'], ['vrss', 'Abonnements RSS', I.rss()], ['vreader', 'Lecteur RSS'], '-', ['log', 'Journal…'], ['stats', 'Statistiques…'],
       '-', ['titlespeed', 'Vitesse dans la barre de titre', null, false, !!store.get('titleSpeed', false)]]],
-    ['Outils', [['settings', 'Réglages…'], ['alt', 'Limites de vitesse alternatives', null, false, !!state.altSpeed], '-',
+    ['Outils', [['settings', 'Réglages…'], ['limits', 'Limites de vitesse globales…'], ['alt', 'Limites de vitesse alternatives', null, false, !!state.altSpeed], '-',
       ['cookies', 'Gérer les cookies…'], '-', ['passwd', 'Mot de passe…']]],
     ['Aide', [['about', 'À propos…'], ['guide', 'Guide d\'utilisation'], ['issue', 'Signaler un problème']]],
   ];
@@ -1192,6 +1194,10 @@ async function runMenu(act) {
     case 'addlink': return openAddDialog({ magnet: true });
     case 'subscribe2': return subscribeDialog({ dest: state.view === 'folder' ? state.path : state.defaultPath });
     case 'logout': return $('#logout').click();
+    case 'creator': return creatorDialog();
+    case 'magnethandler': return registerMagnetHandler();
+    case 'shutdown': return shutdownDialog();
+    case 'limits': return globalLimitsDialog();
     case 'start': case 'stop': { const ok = await torrentAction(act, hs); return done(ok ? (act === 'start' ? 'Démarré' : 'Arrêté') : 'Action refusée'); }
     case 'force': return (await p('torrents/setForceStart', { value: 'true' })) && done(`Reprise forcée pour ${n} torrent${n > 1 ? 's' : ''}`);
     case 'move': return moveDialog();
@@ -1277,17 +1283,7 @@ function moveDialog() {
     },
   });
 }
-async function logDialog() {
-  const list = await api('log/main?last_known_id=-1').then((r) => r.json());
-  const T = { 1: ['Normal', ''], 2: ['Info', ''], 4: ['Avertissement', 'warn'], 8: ['Critique', 'crit'] };
-  const rows = list.slice(-400).reverse().map((l) => {
-    const [label, cls] = T[l.type] || ['—', ''];
-    return `<tr class="${cls}"><td class="muted" style="white-space:nowrap">${new Date(l.timestamp * 1000).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'medium' })}</td>
-      <td style="white-space:nowrap">${label}</td><td style="overflow-wrap:anywhere">${esc(l.message)}</td></tr>`;
-  }).join('');
-  dialog({ title: 'Journal de qBittorrent', ok: 'Fermer', cancel: false, wide: true,
-    body: `<div style="max-height:62vh;overflow:auto;margin:-16px -18px 0"><table class="logt"><thead><tr><th>Date</th><th>Type</th><th>Message</th></tr></thead><tbody>${rows || '<tr><td colspan="3">Journal vide.</td></tr>'}</tbody></table></div>` });
-}
+// Journal : explorer/outils.js (logDialog)
 async function statsDialog() {
   const d = await api('sync/maindata?rid=0').then((r) => r.json());
   const s = d.server_state || {}, n = Object.keys(d.torrents || {}).length;
@@ -1852,6 +1848,7 @@ window.addEventListener('dragover', (e) => e.preventDefault());
 window.addEventListener('drop', (e) => e.preventDefault());
 
 $('#burger').onclick = () => document.body.classList.toggle('side-open');
+$('#speeds').onclick = () => globalLimitsDialog();
 $('#logout').onclick = async () => { try { await post('auth/logout', {}); } catch (_) {} location.reload(); };
 const passwordDialog = (forced = false) => dialog({
   title: forced ? 'Choisissez votre mot de passe' : 'Changer le mot de passe', ok: 'Enregistrer', forced,
@@ -1884,7 +1881,7 @@ $('#classic').onclick = () => { location.href = 'classic.html'; };
 /* ---------- Rafraîchissement ---------- */
 let polling = false;
 async function poll() {
-  if (polling || document.hidden) return;
+  if (polling || document.hidden || state.halted) return; // halted : qBittorrent quitté depuis l'interface
   polling = true;
   try {
     const tr = await syncMain();
@@ -1924,6 +1921,8 @@ async function poll() {
   if (!tree.kids.get(ROOT)?.length) $('#tree').innerHTML = `<div class="tree-msg">Impossible de lire ${esc(ROOT)}.</div>`;
   else renderTree();
   await poll();
+  handleDownloadHash(); // lien magnet ouvert depuis le navigateur (…#download=magnet:…)
+  window.addEventListener('hashchange', handleDownloadHash); // onglet déjà ouvert
   setInterval(poll, 2000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 })();
