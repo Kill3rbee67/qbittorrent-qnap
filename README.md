@@ -31,6 +31,14 @@ Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorr
 
 ![Liste des téléchargements](docs/captures/telechargements.png)
 
+## Thèmes
+
+Le menu **Thème** (entre Outils et Aide) change l'apparence de l'interface explorateur et de la page de connexion : **Classique** (l'apparence d'origine, par défaut), **Ardoise** (sombre), **Papier** (clair, tons chauds), **Signal** (contraste fort), **Minimal**, **Futur** et **Terminal**. **Automatique** suit le réglage clair / sombre de l'ordinateur ou du téléphone (Papier ou Ardoise) et bascule en direct.
+
+Le choix s'applique aussitôt, sans recharger la page, et il est mémorisé par le navigateur : chaque navigateur, et chaque adresse (`http://NAS:8085` ou `/qbittorrent/`), garde le sien. L'interface classique de qBittorrent (« ⇄ Interface classique ») n'est pas concernée.
+
+Tous les thèmes respectent un contraste d'au moins 4,5:1 pour le texte. Les polices sont incluses dans le paquet : aucune n'est téléchargée depuis Internet, et le navigateur ne charge que celles du thème choisi.
+
 ## Compatibilité
 
 | | |
@@ -237,6 +245,8 @@ src/qpkg.cfg                    description du paquet (nom, version, ports)
 src/shared/qBittorrent.sh       script de démarrage et d'arrêt utilisé par QTS
 src/shared/notify.sh            envoi des notifications web (webhook)
 src/shared/webui/public/        page de connexion
+  explorer/themes.css           thèmes : toutes les couleurs, polices, arrondis et ombres (variables CSS)
+  explorer/fonts/               polices des thèmes (woff2) et leurs licences OFL
 src/shared/webui/private/       interface « explorateur de fichiers » (l'interface d'origine y est ajoutée au build, sous classic.html)
   index.html                    page principale : navigation, liste, menus, fenêtres de base
   explorer/torrents.js          synchronisation, colonnes de la liste, tri, clic droit, panneau de détails
@@ -247,7 +257,8 @@ src/shared/webui/private/       interface « explorateur de fichiers » (l'inter
 src/icons/                      icônes de l'App Center
 src/package_routines            gabarit QDK (non modifié)
 build.sh                        construction des paquets
-tests/                          test de mise à jour et extraction d'un .qpkg
+tests/                          test de mise à jour, extraction d'un .qpkg, vérification de l'interface
+                                (couleurs en dur, adresses externes, contrastes des thèmes)
 docs/tests-manuels.md           tests à faire sur un vrai NAS avant une publication
 tools/make-repository.sh        génération de repository.xml (source d'applications)
 repository.xml                  source d'applications de l'App Center (mise à jour par la CI)
@@ -265,6 +276,11 @@ Ce projet (scripts, interface explorateur, outillage) est distribué sous licenc
 | libtorrent, Qt, OpenSSL, Boost, zlib (inclus dans le binaire statique de [userdocs](https://github.com/userdocs/qbittorrent-nox-static)) | BSD-3-Clause, LGPL-3.0, Apache-2.0, BSL-1.0, zlib |
 | Interface web d'origine de qBittorrent (`classic.html` et ses fichiers) | GPL-2.0-or-later et MIT ; bibliothèques JavaScript incluses (MooTools, MochaUI…) : MIT |
 | Script d'installation QDK de QNAP inclus dans chaque `.qpkg` | GPL-2.0-or-later (en-tête de `qinstall.sh`) |
+| Polices des thèmes : Inter, JetBrains Mono, DM Sans, Fraunces, Space Grotesk, IBM Plex Mono, Exo 2, Share Tech Mono | SIL Open Font License 1.1 |
+
+### Crédits
+
+Polices des thèmes, sous [SIL Open Font License 1.1](https://openfontlicense.org) (texte complet et droits d'auteur à côté de chaque police, dans `webui/public/explorer/fonts/`), prises dans les paquets [Fontsource](https://fontsource.org) (sous-ensembles latin et latin étendu) : Inter (The Inter Project Authors), JetBrains Mono (The JetBrains Mono Project Authors), DM Sans (The DM Sans Project Authors), Fraunces (The Fraunces Project Authors), Space Grotesk (The Space Grotesk Project Authors), IBM Plex Mono (IBM Corp.), Exo 2 (The Exo 2 Project Authors), Share Tech Mono (Carrois Type Design).
 
 Détails et sources correspondantes : [docs/LICENCES.md](docs/LICENCES.md).
 

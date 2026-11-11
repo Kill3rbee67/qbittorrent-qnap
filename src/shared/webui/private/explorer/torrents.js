@@ -98,6 +98,14 @@ function updateTitle() {
     : 'qBittorrent';
 }
 
+/* ---------- Barre de progression ----------
+   Le pourcentage est écrit deux fois : sur le fond de la barre (--prog-text) et, découpé
+   à la largeur remplie, sur le remplissage (--on-st-*), pour rester lisible sur tous les thèmes. */
+function progHTML(pct, cls = '') {
+  const t = `${pct.toLocaleString('fr-FR')} %`;
+  return `<div class="prog ${cls}"><b>${t}</b><i style="width:${pct}%"><b aria-hidden="true">${t}</b></i></div>`;
+}
+
 /* ---------- Colonnes de la liste des torrents ---------- */
 // Toutes les colonnes fournies par torrents/info et sync/maindata (mêmes champs),
 // avec les libellés français de l'interface d'origine (contexte TransferListModel).
@@ -119,7 +127,7 @@ const COLS = [
   { k: 'progress', l: 'Progression', w: 110, def: 1, cell: (t) => {
     const pct = Math.floor(t.progress * 1000) / 10;
     const pcls = isError(t) ? 'err' : t.progress >= 1 ? 'done' : isStopped(t) ? 'stop' : '';
-    return `<div class="prog ${pcls}"><i style="width:${pct}%"></i><b>${pct.toLocaleString('fr-FR')} %</b></div>`;
+    return progHTML(pct, pcls);
   } },
   { k: 'state', l: 'État', w: 130, def: 1, sv: (t) => SORT_STATE.indexOf(t.state),
     cell: (t) => { const [label, cls] = ST[t.state] || [t.state, 'wait']; return `<span class="st ${cls}" title="${label}">${label}</span>`; } },
@@ -837,7 +845,7 @@ function multiRenameDialog(after) {
         try {
           const src = q('#mr-x').checked ? find : find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           re = new RegExp(src, (q('#mr-c').checked ? '' : 'i') + (q('#mr-a').checked ? 'g' : ''));
-        } catch (e) { q('#mr-p').innerHTML = `<div style="padding:8px;color:var(--red)">Expression invalide : ${esc(e.message)}</div>`; return; }
+        } catch (e) { q('#mr-p').innerHTML = `<div style="padding:8px;color:var(--danger)">Expression invalide : ${esc(e.message)}</div>`; return; }
         for (const f of scope) {
           const i = f.name.lastIndexOf('/'), dir = f.name.slice(0, i + 1), nm = f.name.slice(i + 1);
           const dot = q('#mr-e').checked ? -1 : nm.lastIndexOf('.');

@@ -1,0 +1,304 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Thèmes de l'interface explorateur et de la page de connexion.
+ *
+ * C'est le SEUL fichier qui contient des couleurs : index.html, explorer/*.js et la
+ * page de connexion n'utilisent que les variables ci-dessous (un test le vérifie).
+ * Le fichier est dans public/ : qBittorrent le sert avant la connexion et, après,
+ * le cherche dans public/ faute de l'avoir dans private/ ; les deux pages le
+ * chargent donc avec le même chemin relatif « explorer/themes.css ».
+ *
+ * Organisation :
+ *  1. valeurs dérivées, communes à tous les thèmes (calculées à partir des
+ *     variables de base de chaque thème) ;
+ *  2. « Classique » : l'apparence d'origine, valeur par valeur ;
+ *  3. un bloc [data-theme="…"] par thème, posé sur <html>.
+ *
+ * Variables de base (à définir dans chaque thème) :
+ *  --bg --panel --panel-2 --border --text --muted --accent --accent-text --danger
+ *  --ok --warn --header-bg --header-text --menu-bg --menu-text --disabled
+ *  --row-hover --row-selected --progress-track --font-ui --font-num --radius
+ *  --radius-sm --shadow --st-dl --st-seed --st-done --st-stop --st-err
+ */
+
+/* 0. Polices embarquées (fonts/, licences OFL à côté), chemins relatifs : aucune requête
+   vers un autre site. Le navigateur ne télécharge une police que si le thème affiché
+   l'utilise, et seulement les sous-ensembles (latin, latin étendu) nécessaires. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/inter-latin-ext-wght-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/inter-latin-wght-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 800; font-display: swap;
+  src: url("fonts/jetbrains-mono-latin-ext-wght-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 800; font-display: swap;
+  src: url("fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "DM Sans"; font-style: normal; font-weight: 100 1000; font-display: swap;
+  src: url("fonts/dm-sans-latin-ext-wght-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "DM Sans"; font-style: normal; font-weight: 100 1000; font-display: swap;
+  src: url("fonts/dm-sans-latin-wght-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Fraunces"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/fraunces-latin-ext-wght-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Fraunces"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/fraunces-latin-wght-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 300 700; font-display: swap;
+  src: url("fonts/space-grotesk-latin-ext-wght-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 300 700; font-display: swap;
+  src: url("fonts/space-grotesk-latin-wght-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("fonts/ibm-plex-mono-latin-ext-400-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("fonts/ibm-plex-mono-latin-ext-600-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("fonts/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Exo 2"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/exo-2-latin-ext-wght-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Exo 2"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/exo-2-latin-wght-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Share Tech Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("fonts/share-tech-mono-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+
+/* 1. Valeurs dérivées (tous thèmes ; le Classique les remplace par ses valeurs exactes) */
+:root {
+  --scheme: light;
+  --panel-3: var(--panel-2);
+  --row-line: color-mix(in srgb, var(--border) 60%, var(--panel));
+  --faint: var(--muted);
+  --accent-strong: var(--accent);
+  --accent-on-soft: var(--accent-strong);
+  --sort-arrow: var(--link);
+  --accent-hover: color-mix(in srgb, var(--accent) 85%, var(--text));
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  --accent-line: color-mix(in srgb, var(--accent) 45%, var(--panel));
+  --accent-ring: color-mix(in srgb, var(--accent) 25%, transparent);
+  --link: var(--accent);
+  --header-bg-image: none;
+  --header-btn-bg: color-mix(in srgb, var(--header-text) 12%, transparent);
+  --header-btn-border: color-mix(in srgb, var(--header-text) 25%, transparent);
+  --header-btn-hover: color-mix(in srgb, var(--header-text) 22%, transparent);
+  --header-menu-hover: color-mix(in srgb, var(--header-text) 18%, transparent);
+  --shadow-header: none;
+  --logo-fg: var(--header-bg);
+  --menu-hover: var(--row-hover);
+  --menu-icon: var(--muted);
+  --disabled-icon: var(--disabled);
+  --side-bg: var(--bg);
+  --side-hover: color-mix(in srgb, var(--text) 7%, var(--side-bg));
+  --caret-hover: color-mix(in srgb, var(--text) 14%, var(--side-bg));
+  --count-bg: var(--panel);
+  --field-bg: var(--panel);
+  --field-text: var(--text);
+  --btn-bg: var(--panel);
+  --th-bg: var(--panel-2);
+  --th-text: var(--muted);
+  --icon-btn: var(--muted);
+  --settings-nav-bg: var(--panel-2);
+  --settings-nav-hover: var(--row-hover);
+  --drop-bg: color-mix(in srgb, var(--accent-soft) 92%, transparent);
+  --warn-text: color-mix(in srgb, var(--warn) 55%, var(--text));
+  --warn-bg: color-mix(in srgb, var(--warn) 14%, var(--panel));
+  --warn-border: color-mix(in srgb, var(--warn) 45%, var(--panel));
+  --tag-text: var(--warn-text);
+  --tag-bg: var(--warn-bg);
+  --tag-border: var(--warn-border);
+  --log-warn: var(--warn-text);
+  --danger-text: var(--danger);
+  --danger-bg: color-mix(in srgb, var(--danger) 12%, var(--panel));
+  --danger-border: color-mix(in srgb, var(--danger) 45%, var(--panel));
+  --offline-bg: var(--danger-bg);
+  --overlay: color-mix(in srgb, #000 55%, transparent);
+  --shadow-dlg: 0 20px 60px rgba(0, 0, 0, .35);
+  --shadow-toast: 0 8px 30px rgba(0, 0, 0, .3);
+  --shadow-side: 4px 0 20px rgba(0, 0, 0, .2);
+  --toast-bg: var(--text);
+  --toast-text: var(--panel);
+  --st-wait: var(--warn);
+  --prog-text: var(--text);
+  --on-st-dl: var(--accent-text);
+  --on-st-done: var(--text);
+  --on-st-stop: var(--text);
+  --on-st-err: var(--panel);
+  --folder: #f2b544;
+  --folder-dark: #d99a24;
+  --folder-virt-paper: var(--panel);
+  --folder-virt-bg: color-mix(in srgb, var(--folder) 15%, var(--panel));
+  --icon-paper: var(--panel);
+  --icon-line: var(--muted);
+  --icon-fold: var(--accent-soft);
+  --icon-line-2: var(--border);
+  --icon-fold-2: var(--panel-2);
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --font-title: var(--font-ui);
+  --radius-xs: var(--radius-sm);
+  --radius-btn: var(--radius);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: var(--radius-lg);
+  --radius-pill: 999px;
+  --login-bg: var(--bg);
+  --login-bg-image: none;
+  --login-shadow: var(--shadow-dlg);
+  --login-input-border: var(--border);
+  --login-ring: var(--accent-ring);
+  --login-err: var(--danger-text);
+}
+html { color-scheme: var(--scheme); }
+/* Listes déroulantes : le Classique garde l'apparence du système, les autres thèmes leurs couleurs */
+:root[data-theme]:not([data-theme="classique"]) select { background-color: var(--field-bg); color: var(--field-text); font-family: inherit; }
+:root[data-theme]:not([data-theme="classique"]) :is(input, textarea, select):disabled { background-color: var(--panel-2); color: var(--muted); }
+
+/* 2. Classique : l'apparence d'origine (5.3.5.1), inchangée — thème par défaut */
+:root:not([data-theme]), [data-theme="classique"] {
+  --scheme: normal;
+  --bg: #f4f6f9; --panel: #ffffff; --panel-2: #fbfcfe; --panel-3: #fafbfd;
+  --border: #d8e0ea; --row-line: #edf1f5;
+  --text: #1f2a37; --muted: #6b7a8c; --faint: #8a96a5;
+  --accent: #1866c2; --accent-strong: #0e4c97; --accent-hover: #0e4c97; --accent-soft: #e3eefb; --accent-line: #b9d3f3;
+  --accent-ring: rgba(24, 102, 194, .15); --accent-text: #fff; --link: #1866c2;
+  --danger: #c9443a; --ok: #2e9d5b; --warn: #d9861c;
+  --header-bg: #1866c2; --header-bg-image: linear-gradient(90deg, #0e4c97, #1866c2); --header-text: #fff;
+  --header-btn-bg: rgba(255, 255, 255, .12); --header-btn-border: rgba(255, 255, 255, .25);
+  --header-btn-hover: rgba(255, 255, 255, .22); --header-menu-hover: rgba(255, 255, 255, .18);
+  --shadow-header: 0 1px 3px rgba(0, 0, 0, .2); --logo-fg: #1866c2;
+  --menu-bg: #fff; --menu-text: #1f2a37; --menu-hover: #edf4fd; --menu-icon: #6b7a8c;
+  --disabled: #69788a; --disabled-icon: #8693a3;
+  --row-hover: #edf4fd; --row-selected: #d7e7fb;
+  --side-bg: #eef2f7; --side-hover: #e2e9f2; --caret-hover: #d3dce8; --count-bg: #fff;
+  --field-bg: #fff; --btn-bg: #fff;
+  --th-bg: #f1f4f8; --th-text: #4a5a6c; --icon-btn: #4a5a6c;
+  --settings-nav-bg: #f7f9fc; --settings-nav-hover: #e9eff7;
+  --drop-bg: rgba(227, 238, 251, .92);
+  --tag-text: #d9861c; --tag-bg: #fff6e8; --tag-border: #f0cf9f; --log-warn: #d9861c;
+  --warn-text: #7a4b0c; --warn-bg: #fff6e8; --warn-border: #f0cf9f;
+  --danger-text: #8e2318; --danger-bg: #fdecea; --danger-border: #f1b5ad; --offline-bg: #fde8e8;
+  --overlay: rgba(15, 30, 50, .45);
+  --shadow: 0 12px 32px rgba(15, 30, 50, .22); --shadow-dlg: 0 20px 60px rgba(0, 0, 0, .3);
+  --shadow-toast: 0 8px 30px rgba(0, 0, 0, .25); --shadow-side: 4px 0 20px rgba(0, 0, 0, .15);
+  --toast-bg: #1f2a37; --toast-text: #fff;
+  --progress-track: #e6ebf1; --prog-text: #1f2a37;
+  --st-dl: #1866c2; --st-seed: #2e9d5b; --st-done: #2e9d5b; --st-stop: #8a96a5; --st-err: #c9443a; --st-wait: #d9861c;
+  --on-st-dl: #1f2a37; --on-st-done: #1f2a37; --on-st-stop: #1f2a37; --on-st-err: #1f2a37;
+  --folder: #f2b544; --folder-dark: #d99a24; --folder-virt-paper: #fff; --folder-virt-bg: #fff7e6;
+  --icon-paper: #fff; --icon-line: #7d93ad; --icon-fold: #e3eefb; --icon-line-2: #a7b3c2; --icon-fold-2: #eef1f5;
+  --font-ui: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; --font-num: var(--font-ui);
+  --font-mono: ui-monospace, Consolas, monospace;
+  --radius-xs: 3px; --radius-sm: 4px; --radius: 5px; --radius-btn: 5px; --radius-md: 6px; --radius-lg: 8px; --radius-xl: 10px; --radius-pill: 10px;
+  --login-bg: #0e4c97; --login-bg-image: linear-gradient(160deg, #1d74d8 0%, #0e4c97 55%, #0a356b 100%);
+  --login-shadow: 0 18px 50px rgba(0, 0, 0, .28); --login-input-border: #cfd8e3;
+  --login-ring: rgba(24, 102, 194, .18); --login-err: #c0392b;
+}
+
+/* 3. Thèmes */
+
+/* Ardoise : sombre */
+[data-theme="ardoise"] {
+  --scheme: dark;
+  --bg: #0F1419; --panel: #121920; --panel-2: #151D25; --border: #263039;
+  --text: #E6EDF3; --muted: #8795A3;
+  --accent: #2DD4BF; --accent-text: #04201C; --accent-strong: #5EEAD4; --accent-hover: #5EEAD4;
+  --danger: #FDA4AF; --ok: #4ADE80; --warn: #FBBF24;
+  --header-bg: #0B0F13; --header-text: #E6EDF3;
+  --menu-bg: #161E26; --menu-text: #E6EDF3; --disabled: #8795A3;
+  --row-hover: #18222B; --row-selected: #12363A; --progress-track: #1E2830;
+  --side-bg: #0D1217; --th-bg: #151D25;
+  --st-dl: #38BDF8; --st-seed: #2DD4BF; --st-done: #4ADE80; --st-stop: #94A3B8; --st-err: #FB7185;
+  --on-st-dl: #04201C; --on-st-done: #04201C; --on-st-stop: #04201C; --on-st-err: #04201C;
+  --toast-bg: #E6EDF3; --toast-text: #0F1419;
+  --folder: #E3A93B; --folder-dark: #B98320;
+  --font-ui: "Inter", system-ui, sans-serif; --font-num: "JetBrains Mono", ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius-sm: 8px; --radius: 10px; --radius-md: 12px; --radius-lg: 14px;
+  --shadow: 0 12px 32px rgba(0, 0, 0, .5);
+}
+
+/* Papier : clair chaud */
+[data-theme="papier"] {
+  --bg: #F6F1E9; --panel: #FFFDF8; --panel-2: #FBF6EE; --border: #E4DACB;
+  --text: #2B2118; --muted: #6B5D4F;
+  --accent: #C2410C; --accent-text: #FFFFFF; --accent-soft: #FFEDD5; --accent-strong: #7C2D12; --accent-hover: #9A3412;
+  --danger: #BE123C; --ok: #15803D; --warn: #B45309;
+  --header-bg: #FFFDF8; --header-text: #2B2118; --logo-fg: #FFFDF8; --shadow-header: 0 1px 0 #E4DACB;
+  --menu-bg: #FFFDF8; --menu-text: #2B2118; --disabled: #75675A;
+  --row-hover: #FBF4E8; --row-selected: #FFEDD5; --progress-track: #EFE6D8;
+  --side-bg: #F1EADF;
+  --st-dl: #C2410C; --st-seed: #15803D; --st-done: #A8998A; --st-stop: #B8AD9F; --st-err: #BE123C;
+  --on-st-dl: #FFFFFF; --on-st-done: #2B2118; --on-st-stop: #2B2118; --on-st-err: #FFFFFF;
+  --font-ui: "DM Sans", system-ui, sans-serif; --font-num: "DM Sans", system-ui, sans-serif;
+  --font-title: "Fraunces", Georgia, serif;
+  --radius-xs: 999px; --radius-sm: 8px; --radius: 10px; --radius-btn: 999px; --radius-md: 12px; --radius-lg: 16px;
+  --shadow: 0 12px 32px rgba(70, 45, 20, .16);
+}
+
+/* Signal : contraste fort */
+[data-theme="signal"] {
+  --bg: #F4F4F2; --panel: #FFFFFF; --panel-2: #FAFAF8; --border: #E2E2DE;
+  --text: #111111; --muted: #5C5C57;
+  --accent: #C6F432; --accent-text: #0A0A0A; --accent-soft: #EEFBC7; --accent-strong: #111111; --accent-hover: #B5E61D;
+  --accent-line: #A3C928; --link: #3F6212;
+  --danger: #B91C1C; --ok: #15803D; --warn: #A16207;
+  --header-bg: #0A0A0A; --header-text: #F4F4F2;
+  --menu-bg: #FFFFFF; --menu-text: #111111; --disabled: #6B6B66;
+  --row-hover: #F7F7F4; --row-selected: #EEFBC7; --progress-track: #ECECE8;
+  --st-dl: #C6F432; --st-seed: #0A0A0A; --st-done: #ECECE8; --st-stop: #FFFFFF; --st-err: #FF5A4D;
+  --on-st-dl: #0A0A0A; --on-st-done: #111111; --on-st-stop: #111111; --on-st-err: #0A0A0A;
+  --font-ui: "Space Grotesk", system-ui, sans-serif; --font-num: "IBM Plex Mono", ui-monospace, monospace;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius-xs: 4px; --radius-sm: 6px; --radius: 6px; --radius-md: 8px; --radius-lg: 8px;
+  --shadow: 0 10px 28px rgba(0, 0, 0, .14);
+}
+
+/* Minimal */
+[data-theme="minimal"] {
+  --bg: #FFFFFF; --panel: #FFFFFF; --panel-2: #FFFFFF; --border: #E4E4E7;
+  --text: #111111; --muted: #52525B;
+  --accent: #1D4ED8; --accent-text: #FFFFFF; --accent-soft: #EFF4FF; --accent-strong: #1E3A8A; --accent-hover: #1E40AF;
+  --danger: #B91C1C; --ok: #15803D; --warn: #A16207;
+  --header-bg: #FFFFFF; --header-text: #111111; --logo-fg: #FFFFFF; --shadow-header: 0 1px 0 #E4E4E7;
+  --menu-bg: #FFFFFF; --menu-text: #111111; --disabled: #71717A;
+  --row-hover: #F4F4F5; --row-selected: #EFF4FF; --progress-track: #F4F4F5;
+  --st-dl: #1D4ED8; --st-seed: #15803D; --st-done: #A1A1AA; --st-stop: #A1A1AA; --st-err: #B91C1C;
+  --on-st-dl: #FFFFFF; --on-st-done: #111111; --on-st-stop: #111111; --on-st-err: #FFFFFF;
+  --font-ui: "Inter", system-ui, sans-serif; --font-num: "Inter", system-ui, sans-serif;
+  --radius-sm: 0; --radius: 0; --radius-pill: 0;
+  --shadow: 0 6px 18px rgba(0, 0, 0, .08); --shadow-dlg: 0 12px 40px rgba(0, 0, 0, .12);
+}
+
+/* Futur : HUD néon */
+[data-theme="futur"] {
+  --scheme: dark;
+  --bg: #05070D; --panel: #0A0F1A; --panel-2: #0D1424; --border: #1B2B45;
+  --text: #E6F1FF; --muted: #8CA3C0;
+  --accent: #22D3EE; --accent-text: #031317; --accent-2: #A78BFA; --accent-strong: #67E8F9; --accent-hover: #67E8F9;
+  --danger: #FB7185; --ok: #34D399; --warn: #FBBF24;
+  --header-bg: #070B14; --header-text: #E6F1FF;
+  --menu-bg: #0D1424; --menu-text: #E6F1FF; --disabled: #7D93AF;
+  --row-hover: #0E1830; --row-selected: #0B2A3A; --progress-track: #111A2C;
+  --side-bg: #070B14;
+  --st-dl: #22D3EE; --st-seed: #A78BFA; --st-done: #34D399; --st-stop: #94A3B8; --st-err: #FB7185;
+  --on-st-dl: #031317; --on-st-done: #031317; --on-st-stop: #031317; --on-st-err: #031317;
+  --toast-bg: #E6F1FF; --toast-text: #05070D;
+  --font-ui: "Exo 2", system-ui, sans-serif; --font-num: "Share Tech Mono", ui-monospace, monospace;
+  --font-mono: "Share Tech Mono", ui-monospace, monospace;
+  --radius-sm: 0; --radius: 0; --radius-pill: 0;
+  --shadow: 0 0 0 1px #1B2B45, 0 12px 32px rgba(0, 0, 0, .6);
+}
+
+/* Terminal */
+[data-theme="terminal"] {
+  --scheme: dark;
+  --bg: #0D0A06; --panel: #0D0A06; --panel-2: #120E08; --border: #5A4416;
+  --text: #FFB000; --muted: #B8892E; --accent-2: #E0A52E;
+  --accent: #FFB000; --accent-text: #0D0A06; --accent-soft: #FFB000; --accent-on-soft: #0D0A06; --accent-strong: #FFB000; --accent-hover: #E0A52E;
+  --accent-line: #8A6A1E; --link: #FFB000;
+  --danger: #FF8A6B; --ok: #E0A52E; --warn: #E0A52E;
+  --header-bg: #0D0A06; --header-text: #FFB000;
+  --menu-bg: #120E08; --menu-text: #FFB000; --disabled: #B8892E;
+  --row-hover: #1E1609; --row-selected: #3A2A08; --progress-track: #2A1F0C;
+  --th-text: #E0A52E;
+  --st-dl: #FFB000; --st-seed: #E0A52E; --st-done: #B8892E; --st-stop: #9C7A34; --st-err: #FF8A6B;
+  --on-st-dl: #0D0A06; --on-st-done: #0D0A06; --on-st-stop: #0D0A06; --on-st-err: #0D0A06;
+  --toast-bg: #FFB000; --toast-text: #0D0A06;
+  --font-ui: "JetBrains Mono", ui-monospace, monospace; --font-num: var(--font-ui); --font-mono: var(--font-ui);
+  --radius-sm: 0; --radius: 0; --radius-pill: 0;
+  --shadow: 0 0 0 1px #5A4416;
+}
