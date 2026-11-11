@@ -44,6 +44,21 @@ Avant de commencer : sauvegardez le profil (voir README, « Mise à jour et migr
 | 2b.9 | Clic droit sur un en-tête › Réinitialiser les colonnes. | Retour aux colonnes, largeurs et ordre d'origine. |
 | 2b.10 | Avec plusieurs centaines de torrents : faire défiler, trier, redimensionner. | Pas de ralentissement visible ; le rafraîchissement toutes les 2 s ne fige pas la page. |
 
+## 2 ter. Thèmes (QTS)
+
+| # | Action | Résultat attendu |
+|---|---|---|
+| 2t.1 | Menu Thème. | Il s'ouvre sous son onglet : Automatique, puis Classique, Ardoise, Papier, Signal, Minimal, Futur, Terminal, chacun avec 4 carrés de couleur ; coche sur Classique. |
+| 2t.2 | Choisir chaque thème l'un après l'autre. | Couleurs et polices changent aussitôt, sans rechargement ; la sélection, le tri et la position dans la liste restent. Textes lisibles partout (liste, barre latérale, menus, entrées grisées, en-têtes de colonnes, barres de progression). |
+| 2t.3 | Avec un thème choisi : ouvrir Réglages, l'ajout d'un torrent, le panneau de détails, le lecteur RSS, un clic droit. | Fenêtres, champs, listes déroulantes et menus aux couleurs du thème. |
+| 2t.4 | Recharger la page (Ctrl+F5). | Le thème est conservé et s'affiche directement, sans passer par le Classique. |
+| 2t.5 | Se déconnecter. | La page de connexion est au même thème. |
+| 2t.6 | Thème › Automatique, puis passer le système (Windows, macOS, téléphone) de clair à sombre. | Papier en clair, Ardoise en sombre, bascule sans recharger. |
+| 2t.7 | « ⇄ Interface classique ». | L'interface d'origine de qBittorrent garde son apparence habituelle. |
+| 2t.8 | Clavier : Tab jusqu'à l'onglet Thème, Entrée, ↓, Entrée ; puis Échap sur le menu ouvert. | Le thème choisi s'applique ; Échap ferme le menu. |
+| 2t.9 | Sur téléphone : « Menu ▾ » › un thème. | Thème appliqué, pas de défilement horizontal, menu entièrement visible. |
+| 2t.10 | Par myQNAPcloud Link : choisir un thème. | Mêmes résultats (chaque adresse garde son propre choix). |
+
 ## 3. Panneau de détails (QTS)
 
 | # | Action | Résultat attendu |

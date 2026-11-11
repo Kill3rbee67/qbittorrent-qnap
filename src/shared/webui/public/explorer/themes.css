@@ -20,6 +20,44 @@
  *  --radius-sm --shadow --st-dl --st-seed --st-done --st-stop --st-err
  */
 
+/* 0. Polices embarquées (fonts/, licences OFL à côté), chemins relatifs : aucune requête
+   vers un autre site. Le navigateur ne télécharge une police que si le thème affiché
+   l'utilise, et seulement les sous-ensembles (latin, latin étendu) nécessaires. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/inter-latin-ext-wght-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/inter-latin-wght-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 800; font-display: swap;
+  src: url("fonts/jetbrains-mono-latin-ext-wght-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 800; font-display: swap;
+  src: url("fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "DM Sans"; font-style: normal; font-weight: 100 1000; font-display: swap;
+  src: url("fonts/dm-sans-latin-ext-wght-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "DM Sans"; font-style: normal; font-weight: 100 1000; font-display: swap;
+  src: url("fonts/dm-sans-latin-wght-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Fraunces"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/fraunces-latin-ext-wght-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Fraunces"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/fraunces-latin-wght-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 300 700; font-display: swap;
+  src: url("fonts/space-grotesk-latin-ext-wght-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 300 700; font-display: swap;
+  src: url("fonts/space-grotesk-latin-wght-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("fonts/ibm-plex-mono-latin-ext-400-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("fonts/ibm-plex-mono-latin-ext-600-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("fonts/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Exo 2"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/exo-2-latin-ext-wght-normal.woff2") format("woff2"); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Exo 2"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("fonts/exo-2-latin-wght-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Share Tech Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("fonts/share-tech-mono-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+
 /* 1. Valeurs dérivées (tous thèmes ; le Classique les remplace par ses valeurs exactes) */
 :root {
   --scheme: light;
@@ -110,7 +148,7 @@ html { color-scheme: var(--scheme); }
 :root[data-theme]:not([data-theme="classique"]) :is(input, textarea, select):disabled { background-color: var(--panel-2); color: var(--muted); }
 
 /* 2. Classique : l'apparence d'origine (5.3.5.1), inchangée — thème par défaut */
-:root:not([data-theme]), :root[data-theme="classique"] {
+:root:not([data-theme]), [data-theme="classique"] {
   --scheme: normal;
   --bg: #f4f6f9; --panel: #ffffff; --panel-2: #fbfcfe; --panel-3: #fafbfd;
   --border: #d8e0ea; --row-line: #edf1f5;
@@ -153,7 +191,7 @@ html { color-scheme: var(--scheme); }
 /* 3. Thèmes */
 
 /* Ardoise : sombre */
-:root[data-theme="ardoise"] {
+[data-theme="ardoise"] {
   --scheme: dark;
   --bg: #0F1419; --panel: #121920; --panel-2: #151D25; --border: #263039;
   --text: #E6EDF3; --muted: #8795A3;
@@ -174,7 +212,7 @@ html { color-scheme: var(--scheme); }
 }
 
 /* Papier : clair chaud */
-:root[data-theme="papier"] {
+[data-theme="papier"] {
   --bg: #F6F1E9; --panel: #FFFDF8; --panel-2: #FBF6EE; --border: #E4DACB;
   --text: #2B2118; --muted: #6B5D4F;
   --accent: #C2410C; --accent-text: #FFFFFF; --accent-soft: #FFEDD5; --accent-strong: #7C2D12; --accent-hover: #9A3412;
@@ -192,7 +230,7 @@ html { color-scheme: var(--scheme); }
 }
 
 /* Signal : contraste fort */
-:root[data-theme="signal"] {
+[data-theme="signal"] {
   --bg: #F4F4F2; --panel: #FFFFFF; --panel-2: #FAFAF8; --border: #E2E2DE;
   --text: #111111; --muted: #5C5C57;
   --accent: #C6F432; --accent-text: #0A0A0A; --accent-soft: #EEFBC7; --accent-strong: #111111; --accent-hover: #B5E61D;
@@ -210,7 +248,7 @@ html { color-scheme: var(--scheme); }
 }
 
 /* Minimal */
-:root[data-theme="minimal"] {
+[data-theme="minimal"] {
   --bg: #FFFFFF; --panel: #FFFFFF; --panel-2: #FFFFFF; --border: #E4E4E7;
   --text: #111111; --muted: #52525B;
   --accent: #1D4ED8; --accent-text: #FFFFFF; --accent-soft: #EFF4FF; --accent-strong: #1E3A8A; --accent-hover: #1E40AF;
@@ -226,7 +264,7 @@ html { color-scheme: var(--scheme); }
 }
 
 /* Futur : HUD néon */
-:root[data-theme="futur"] {
+[data-theme="futur"] {
   --scheme: dark;
   --bg: #05070D; --panel: #0A0F1A; --panel-2: #0D1424; --border: #1B2B45;
   --text: #E6F1FF; --muted: #8CA3C0;
@@ -246,7 +284,7 @@ html { color-scheme: var(--scheme); }
 }
 
 /* Terminal */
-:root[data-theme="terminal"] {
+[data-theme="terminal"] {
   --scheme: dark;
   --bg: #0D0A06; --panel: #0D0A06; --panel-2: #120E08; --border: #5A4416;
   --text: #FFB000; --muted: #B8892E; --accent-2: #E0A52E;

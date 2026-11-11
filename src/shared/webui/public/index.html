@@ -11,6 +11,25 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>qBittorrent – Connexion</title>
 <link rel="stylesheet" href="explorer/themes.css?v=__QPKG_VER__">
+<script>
+// Thème (menu Thème) : appliqué ici, avant l'affichage, pour ne pas apercevoir le thème
+// par défaut. « auto » suit le réglage clair / sombre du système, en direct.
+var THEME_IDS = ['classique', 'ardoise', 'papier', 'signal', 'minimal', 'futur', 'terminal'];
+function themeChoice() {
+  try { var t = JSON.parse(localStorage.getItem('qbfs.theme')); return t === 'auto' || THEME_IDS.indexOf(t) >= 0 ? t : 'classique'; }
+  catch (e) { return window.themeSession || 'classique'; }
+}
+function applyTheme(t) {
+  t = t || themeChoice(); window.themeSession = t;
+  var r = t === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'ardoise' : 'papier') : t;
+  if (r === 'classique') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', r);
+}
+applyTheme();
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { if (window.themeSession === 'auto') applyTheme('auto'); }); } catch (e) {}
+// Thème changé dans un autre onglet
+window.addEventListener('storage', function (e) { if (e.key === 'qbfs.theme') applyTheme(); });
+</script>
 <style>
   /* Couleurs, polices, arrondis et ombres : explorer/themes.css (variables) */
   * { box-sizing:border-box; }

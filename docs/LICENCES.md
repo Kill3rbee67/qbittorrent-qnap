@@ -15,6 +15,7 @@ Chaque paquet `.qpkg` publié contient en plus les composants tiers ci-dessous, 
 | zlib | lié statiquement dans `qbittorrent-nox` | zlib | <https://zlib.net/> |
 | Interface web d'origine de qBittorrent | `webui/private/` (`classic.html`, `scripts/`, `css/`, `views/`…) et `webui/translations/` | GPL-2.0-or-later et MIT selon les fichiers (voir leurs en-têtes) | sources de qBittorrent, dossier `src/webui/www` du même tag |
 | MooTools, MochaUI (Greg Houston), clipboard-copy, vanillaSelectBox (utilisés par l'interface d'origine) | `webui/private/scripts/lib/` | MIT (voir l'en-tête de chaque fichier) | <https://mootools.net/> ; les autres sont redistribués par qBittorrent dans `src/webui/www/private/scripts/lib` |
+| Polices des thèmes (Inter, JetBrains Mono, DM Sans, Fraunces, Space Grotesk, IBM Plex Mono, Exo 2, Share Tech Mono) | `webui/public/explorer/fonts/*.woff2` (sous-ensembles latin et latin étendu) | SIL Open Font License 1.1 (fichiers `*-OFL.txt` à côté) | <https://fontsource.org> (paquets npm `@fontsource` et `@fontsource-variable`, version 5.3.0), d'après les dépôts des auteurs |
 | Script d'installation QDK | en-tête de chaque `.qpkg` (`qinstall.sh`), gabarit `package_routines` | GPL-2.0-or-later pour `qinstall.sh` (en-tête du fichier) ; le gabarit, sans en-tête, relève de la licence de QDK | <https://github.com/qnap-dev/QDK> (tag indiqué dans `PROVENANCE.txt`) |
 
 Remarques :

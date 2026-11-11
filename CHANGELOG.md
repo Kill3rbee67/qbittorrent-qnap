@@ -2,6 +2,17 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.6.0
+Ajouté
+- Menu **Thème** (entre Outils et Aide) : Classique (apparence d'origine, par défaut), Ardoise, Papier, Signal, Minimal, Futur, Terminal, avec un aperçu des couleurs de chacun et une coche sur le thème actif ; **Automatique** suit le réglage clair / sombre du système (Papier ou Ardoise), en direct. Utilisable au clavier.
+- Le thème s'applique immédiatement, sans recharger ni reconstruire la liste, à l'interface explorateur et à la page de connexion ; il est mémorisé dans le navigateur, appliqué avant l'affichage de la page (pas d'éclair du thème par défaut) et suivi par les autres onglets ouverts.
+- Polices des thèmes incluses dans le paquet (Inter, JetBrains Mono, DM Sans, Fraunces, Space Grotesk, IBM Plex Mono, Exo 2, Share Tech Mono ; woff2, latin et latin étendu, licence OFL) : aucune requête vers un autre site, seules les polices du thème affiché sont chargées, repli sur les polices du système.
+- `tests/interface-check.py` vérifie aussi qu'aucune ressource n'est chargée depuis un autre site.
+
+Modifié
+- README : section « Thèmes », crédits et licences des polices.
+- L'interface classique de qBittorrent n'est pas thémée.
+
 ## 5.3.5.2
 Préparation des thèmes (aucun changement visible : l'apparence d'origine, désormais appelée « Classique », est reproduite pixel pour pixel).
 

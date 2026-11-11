@@ -11,6 +11,25 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>qBittorrent</title>
 <link rel="stylesheet" href="explorer/themes.css?v=__QPKG_VER__">
+<script>
+// Thème (menu Thème) : appliqué ici, avant l'affichage, pour ne pas apercevoir le thème
+// par défaut. « auto » suit le réglage clair / sombre du système, en direct.
+var THEME_IDS = ['classique', 'ardoise', 'papier', 'signal', 'minimal', 'futur', 'terminal'];
+function themeChoice() {
+  try { var t = JSON.parse(localStorage.getItem('qbfs.theme')); return t === 'auto' || THEME_IDS.indexOf(t) >= 0 ? t : 'classique'; }
+  catch (e) { return window.themeSession || 'classique'; }
+}
+function applyTheme(t) {
+  t = t || themeChoice(); window.themeSession = t;
+  var r = t === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'ardoise' : 'papier') : t;
+  if (r === 'classique') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', r);
+}
+applyTheme();
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { if (window.themeSession === 'auto') applyTheme('auto'); }); } catch (e) {}
+// Thème changé dans un autre onglet
+window.addEventListener('storage', function (e) { if (e.key === 'qbfs.theme') applyTheme(); });
+</script>
 <style>
   /* Couleurs, polices, arrondis et ombres : explorer/themes.css (variables) */
   * { box-sizing:border-box; }
@@ -210,6 +229,9 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
   .menu .mh { padding:8px 14px 3px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
   .menu button .sub { margin-left:auto; padding-left:18px; color:var(--menu-icon); }
   .menu button.open { background:var(--menu-hover); }
+  .menu .swatch { margin-left:auto; padding-left:16px; display:flex; gap:6px; }
+  .menu .swatch > span { display:flex; border:1px solid var(--border); }
+  .menu .swatch i { width:10px; height:14px; }
   th[data-sort] { cursor:pointer; user-select:none; }
   th[data-sort]:hover { color:var(--accent-strong); }
   th .arr { font-size:10px; margin-left:3px; color:var(--sort-arrow); }
@@ -1152,6 +1174,7 @@ function menus() {
       '-', ['titlespeed', 'Vitesse dans la barre de titre', null, false, !!store.get('titleSpeed', false)]]],
     ['Outils', [['settings', 'Réglages…'], ['limits', 'Limites de vitesse globales…'], ['alt', 'Limites de vitesse alternatives', null, false, !!state.altSpeed], '-',
       ['cookies', 'Gérer les cookies…'], '-', ['passwd', 'Mot de passe…']]],
+    ['Thème', themeItems()],
     ['Aide', [['about', 'À propos…'], ['guide', 'Guide d\'utilisation'], ['issue', 'Signaler un problème']]],
   ];
 }
@@ -1159,11 +1182,12 @@ function menuHTML(items) {
   return items.map((it) => {
     if (it === '-') return '<hr>';
     if (it[0] === '#') return `<div class="mh">${esc(it[1])}</div>`;
-    const [act, label, icon, disabled, checked, sub] = it;
+    const [act, label, icon, disabled, checked, sub, extra] = it; // extra : HTML ajouté après le libellé (aperçu)
     const mark = checked !== undefined && checked !== null ? (checked ? '✓' : '') : (icon || '');
     if (sub) return `<button role="menuitem" aria-haspopup="menu" data-msub="${esc(act)}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}<span class="sub">›</span></button>`;
     const isCk = checked !== undefined && checked !== null;
-    return `<button role="menuitem${isCk ? `checkbox" aria-checked="${checked ? 'true' : 'false'}` : ''}" data-mact="${esc(act)}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}</button>`;
+    const role = isCk ? (act.startsWith('theme:') ? 'menuitemradio' : 'menuitemcheckbox') : 'menuitem';
+    return `<button role="${role}"${isCk ? ` aria-checked="${checked ? 'true' : 'false'}"` : ''} data-mact="${esc(act)}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}${extra || ''}</button>`;
   }).join('');
 }
 let openMenu = null;
@@ -1245,7 +1269,24 @@ function renderMenubar() {
   $('#menubar').innerHTML = menus().map(([t], i) => `<button data-menu="${i}" aria-haspopup="menu">${t}</button>`).join('')
     + '<button class="mall" data-menu="all" aria-haspopup="menu">Menu ▾</button>';
 }
+/* ---------- Thèmes (variables : explorer/themes.css ; application : script du <head>) ---------- */
+const THEME_NAMES = { classique: 'Classique', ardoise: 'Ardoise', papier: 'Papier', signal: 'Signal', minimal: 'Minimal', futur: 'Futur', terminal: 'Terminal' };
+// Aperçu : fond, panneau, accent, texte du thème (data-theme sur l'aperçu lui-même)
+const swatch = (ids) => `<span class="swatch" aria-hidden="true">${ids.map((id) =>
+  `<span data-theme="${id}">${['bg', 'panel', 'accent', 'text'].map((v) => `<i style="background:var(--${v})"></i>`).join('')}</span>`).join('')}</span>`;
+function themeItems() {
+  const cur = window.themeSession || 'classique';
+  return [['theme:auto', 'Automatique (clair : Papier, sombre : Ardoise)', null, false, cur === 'auto', null, swatch(['papier', 'ardoise'])], '-',
+    ...THEME_IDS.map((id) => [`theme:${id}`, THEME_NAMES[id], null, false, cur === id, null, swatch([id])])];
+}
+// Changement immédiat : seul l'attribut data-theme de <html> change, la liste n'est pas reconstruite
+function setTheme(id) {
+  if (id !== 'auto' && !THEME_IDS.includes(id)) return;
+  store.set('theme', id);
+  applyTheme(id);
+}
 async function runMenu(act) {
+  if (act.startsWith('theme:')) return setTheme(act.slice(6));
   const hs = selHashes(), n = hs.length, p = (path, extra = {}) => apiAct(path, { hashes: hs.join('|'), ...extra });
   const done = (msg) => { if (msg) toast(msg); setTimeout(poll, 400); };
   if (await runTorrentMenu(act, hs)) return;
