@@ -2,8 +2,10 @@
 // Interface explorateur — torrents : synchronisation, tri, actions du clic droit
 // et panneau de détails (fichiers, trackers, pairs, sources HTTP).
 //
+// Colonnes de la liste : choix, largeur, ordre (mémorisés dans le navigateur).
+//
 // Chargé avant le script principal de index.html : ce fichier ne contient que
-// des déclarations. Les variables du script principal (state, det, I, api,
+// des déclarations et des écouteurs d'événements. Les variables du script principal (state, det, I, api,
 // post, toast, dialog…) sont utilisées au moment des appels.
 //
 // Endpoints utilisés (API WebUI v2, vérifiés dans le wiki « WebUI API
@@ -96,34 +98,367 @@ function updateTitle() {
     : 'qBittorrent';
 }
 
-/* ---------- Tri de la liste ---------- */
-// Tri des colonnes Catégorie et Étiquettes : chaînes vides en dernier
+/* ---------- Colonnes de la liste des torrents ---------- */
+// Toutes les colonnes fournies par torrents/info et sync/maindata (mêmes champs),
+// avec les libellés français de l'interface d'origine (contexte TransferListModel).
+// k : champ et identifiant · w : largeur par défaut (px) · num : aligné à droite
+// def : affichée par défaut · cell : contenu HTML · sv : valeur de tri (sinon t[k])
+// Durée sans plafond (le temps actif peut dépasser 100 jours, contrairement à fmtDur)
+const fmtSpan = (s) => {
+  s = Math.max(0, Math.floor(s || 0));
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return d ? `${d} j ${h} h` : h ? `${h} h ${m} min` : m ? `${m} min` : `${s} s`;
+};
+const fmtRatio = (r) => (r === -1 || r > 9999 ? '∞' : (+r || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+const dash = '<span class="muted">—</span>';
+const etaOf = (t) => (t.progress >= 1 || isStopped(t) || !(t.eta >= 0) || t.eta >= 8640000 ? Infinity : t.eta);
+const COLS = [
+  { k: 'name', l: 'Nom', w: 0,
+    cell: (t) => `<div class="name" title="${esc(t.name)}">${I.torrent(18)}<span>${esc(t.name)}</span></div>` },
+  { k: 'size', l: 'Taille', w: 80, num: 1, def: 1, cell: (t) => fmtSize(t.size) },
+  { k: 'progress', l: 'Progression', w: 110, def: 1, cell: (t) => {
+    const pct = Math.floor(t.progress * 1000) / 10;
+    const pcls = isError(t) ? 'err' : t.progress >= 1 ? 'done' : isStopped(t) ? 'stop' : '';
+    return `<div class="prog ${pcls}"><i style="width:${pct}%"></i><b>${pct.toLocaleString('fr-FR')} %</b></div>`;
+  } },
+  { k: 'state', l: 'État', w: 130, def: 1, sv: (t) => SORT_STATE.indexOf(t.state),
+    cell: (t) => { const [label, cls] = ST[t.state] || [t.state, 'wait']; return `<span class="st ${cls}" title="${label}">${label}</span>`; } },
+  { k: 'dlspeed', l: 'Réception', w: 85, num: 1, def: 1, cell: (t) => fmtSpeed(t.dlspeed) },
+  { k: 'upspeed', l: 'Envoi', w: 85, num: 1, def: 1, cell: (t) => fmtSpeed(t.upspeed) },
+  { k: 'eta', l: 'Temps restant estimé', w: 95, num: 1, def: 1, sv: etaOf,
+    cell: (t) => (etaOf(t) === Infinity ? '—' : fmtEta(t.eta)) },
+  { k: 'category', l: 'Catégorie', w: 100, def: 1, sv: (t) => t.category || '￿',
+    cell: (t) => (t.category ? `<span class="folderlink" data-cat="${esc(t.category)}" title="Filtrer sur cette catégorie">${esc(t.category)}</span>` : dash) },
+  { k: 'tags', l: 'Étiquettes', w: 100, def: 1, sv: (t) => t.tags || '￿',
+    cell: (t) => tagsOf(t).map((g) => `<span class="tag" data-tag="${esc(g)}" title="Filtrer sur cette étiquette">${esc(g)}</span>`).join('') || dash },
+  { k: 'save_path', l: 'Répertoire de destination', w: 150, def: 1, sv: (t) => normalize(t.save_path),
+    cell: (t) => { const sp = normalize(t.save_path); return `<span class="folderlink" data-folder="${esc(sp)}" title="Ouvrir ${esc(sp)}">${esc(relPath(sp))}</span>`; } },
+  { k: 'priority', l: '#', w: 44, num: 1, sv: (t) => (t.priority < 1 ? Infinity : t.priority), cell: (t) => (t.priority < 1 ? '*' : t.priority) },
+  { k: 'total_size', l: 'Taille totale', w: 90, num: 1, cell: (t) => fmtSize(t.total_size) },
+  { k: 'num_seeds', l: 'Sources', w: 80, num: 1, cell: (t) => `${t.num_seeds ?? 0} (${t.num_complete ?? 0})` },
+  { k: 'num_leechs', l: 'Pairs', w: 80, num: 1, cell: (t) => `${t.num_leechs ?? 0} (${t.num_incomplete ?? 0})` },
+  { k: 'ratio', l: 'Ratio', w: 70, num: 1, sv: (t) => (t.ratio === -1 ? Infinity : t.ratio), cell: (t) => fmtRatio(t.ratio) },
+  { k: 'popularity', l: 'Popularité', w: 80, num: 1, cell: (t) => fmtRatio(t.popularity) },
+  { k: 'creation_date', l: 'Créé le', w: 150, cell: (t) => fmtDate(t.creation_date) },
+  { k: 'added_on', l: 'Ajouté le', w: 150, cell: (t) => fmtDate(t.added_on) },
+  { k: 'completion_on', l: 'Complété le', w: 150, cell: (t) => fmtDate(t.completion_on) },
+  { k: 'tracker', l: 'Tracker', w: 150, sv: (t) => trackerHost(t.tracker) || '￿',
+    cell: (t) => (t.tracker ? `<span title="${esc(t.tracker)}">${esc(trackerHost(t.tracker))}</span>` : dash) },
+  { k: 'dl_limit', l: 'Limite de réception', w: 110, num: 1, sv: (t) => (t.dl_limit > 0 ? t.dl_limit : Infinity), cell: (t) => fmtLimit(t.dl_limit) },
+  { k: 'up_limit', l: 'Limite d\'envoi', w: 110, num: 1, sv: (t) => (t.up_limit > 0 ? t.up_limit : Infinity), cell: (t) => fmtLimit(t.up_limit) },
+  { k: 'downloaded', l: 'Téléchargé', w: 100, num: 1, cell: (t) => fmtSize(t.downloaded) },
+  { k: 'uploaded', l: 'Envoyé', w: 100, num: 1, cell: (t) => fmtSize(t.uploaded) },
+  { k: 'downloaded_session', l: 'Téléchargé durant la session', w: 110, num: 1, cell: (t) => fmtSize(t.downloaded_session) },
+  { k: 'uploaded_session', l: 'Envoyé durant la session', w: 110, num: 1, cell: (t) => fmtSize(t.uploaded_session) },
+  { k: 'amount_left', l: 'Restant', w: 100, num: 1, cell: (t) => fmtSize(t.amount_left) },
+  { k: 'time_active', l: 'Temps actif', w: 160,
+    cell: (t) => (t.seeding_time > 0 ? `${fmtSpan(t.time_active)} (partagé pendant ${fmtSpan(t.seeding_time)})` : fmtSpan(t.time_active)) },
+  { k: 'completed', l: 'Complété', w: 100, num: 1, cell: (t) => fmtSize(t.completed) },
+  { k: 'max_ratio', l: 'Limite de ratio', w: 90, num: 1, sv: (t) => (t.max_ratio < 0 ? Infinity : t.max_ratio), cell: (t) => fmtRatio(t.max_ratio < 0 ? -1 : t.max_ratio) },
+  { k: 'seen_complete', l: 'Dernière fois vu complet', w: 150, cell: (t) => fmtDate(t.seen_complete) },
+  { k: 'last_activity', l: 'Dernière activité', w: 120, sv: (t) => (t.last_activity < 1 ? -Infinity : t.last_activity),
+    cell: (t) => (t.last_activity < 1 ? '∞' : `Il y a ${fmtSpan(Date.now() / 1000 - t.last_activity)}`) },
+  { k: 'availability', l: 'Disponibilité', w: 90, num: 1,
+    cell: (t) => (t.availability >= 0 ? t.availability.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : '—') },
+  { k: 'download_path', l: 'Répertoire de destination incomplet', w: 180, sv: (t) => normalize(t.download_path) || '￿',
+    cell: (t) => (t.download_path ? `<span title="${esc(normalize(t.download_path))}">${esc(relPath(t.download_path))}</span>` : dash) },
+  { k: 'infohash_v1', l: 'Info hash v1', w: 160, cell: (t) => (t.infohash_v1 ? `<span class="mono">${esc(t.infohash_v1)}</span>` : dash) },
+  { k: 'infohash_v2', l: 'Info hash v2', w: 160, cell: (t) => (t.infohash_v2 ? `<span class="mono">${esc(t.infohash_v2)}</span>` : dash) },
+  { k: 'reannounce', l: 'Réannonce dans', w: 100, num: 1, cell: (t) => fmtSpan(t.reannounce) },
+  { k: 'private', l: 'Privé', w: 60, sv: (t) => (t.has_metadata === false ? -1 : t.private ? 1 : 0),
+    cell: (t) => (t.has_metadata === false ? 'N/D' : t.private ? 'Oui' : 'Non') },
+];
+const COLMAP = Object.fromEntries(COLS.map((c) => [c.k, c]));
+const CK_W = 34, NAME_MIN = 200, COL_MIN = 40, COL_MAX = 1200;
+// Sur téléphone, seules les colonnes Nom et Progression tiennent dans l'écran
+const phoneCols = matchMedia('(max-width: 760px)');
+const clampW = (v) => Math.round(Math.min(COL_MAX, Math.max(COL_MIN, v)));
+
+// Choix de l'utilisateur, mémorisé dans le navigateur (store : localStorage protégé)
+// { order : ordre de toutes les colonnes sauf Nom, show : colonnes affichées, w : largeurs }
+let colPrefs = null;
+function loadColPrefs() {
+  const p = store.get('cols', null), ok = p && typeof p === 'object';
+  const order = ok && Array.isArray(p.order) ? p.order.filter((k, i, a) => COLMAP[k] && k !== 'name' && a.indexOf(k) === i) : [];
+  for (const c of COLS) if (c.k !== 'name' && !order.includes(c.k)) order.push(c.k); // colonnes ajoutées par une mise à jour
+  const show = new Set(ok && Array.isArray(p.show) ? p.show.filter((k) => COLMAP[k]) : COLS.filter((c) => c.def).map((c) => c.k));
+  show.add('name');
+  const w = {};
+  if (ok && p.w && typeof p.w === 'object') for (const [k, v] of Object.entries(p.w)) if (COLMAP[k] && Number.isFinite(v)) w[k] = clampW(v);
+  colPrefs = { order, show, w };
+  return colPrefs;
+}
+const cp = () => colPrefs || loadColPrefs();
+function saveColPrefs() { const p = cp(); store.set('cols', { order: p.order, show: [...p.show], w: p.w }); }
+function resetColPrefs() {
+  try { localStorage.removeItem('qbfs.cols'); } catch (_) {}
+  colPrefs = null;
+}
+// Colonnes affichées, dans l'ordre (Nom toujours en premier)
+function shownCols() {
+  const p = cp();
+  const ks = ['name', ...p.order.filter((k) => p.show.has(k))];
+  return (phoneCols.matches ? ks.filter((k) => k === 'name' || k === 'progress') : ks).map((k) => COLMAP[k]);
+}
+const colW = (k) => cp().w[k] ?? COLMAP[k].w;
+
+/* Tri */
 const SORT_STATE = ['downloading', 'forcedDL', 'metaDL', 'forcedMetaDL', 'stalledDL', 'queuedDL', 'checkingDL', 'checkingUP', 'checkingResumeData',
   'moving', 'uploading', 'forcedUP', 'stalledUP', 'queuedUP', 'stoppedDL', 'pausedDL', 'stoppedUP', 'pausedUP', 'error', 'missingFiles'];
+const SORT_DESC_FIRST = ['size', 'total_size', 'progress', 'dlspeed', 'upspeed', 'ratio', 'popularity', 'num_seeds', 'num_leechs', 'downloaded', 'uploaded',
+  'downloaded_session', 'uploaded_session', 'amount_left', 'completed', 'time_active', 'availability', 'added_on', 'completion_on', 'creation_date', 'last_activity', 'seen_complete'];
 function torrentSorter() {
   const { k, d } = store.get('sort', { k: 'added_on', d: -1 });
-  const val = (t) => k === 'state' ? SORT_STATE.indexOf(t.state)
-    : k === 'eta' ? (t.progress >= 1 || isStopped(t) || !(t.eta >= 0) || t.eta >= 8640000 ? Infinity : t.eta)
-    : k === 'save_path' ? normalize(t.save_path)
-    : k === 'category' || k === 'tags' ? (t[k] || '\uffff') : t[k];
+  const c = COLMAP[k], val = c && c.sv ? c.sv : (t) => t[k];
   return (a, b) => {
     const x = val(a), y = val(b);
-    const c = typeof x === 'string' || typeof y === 'string' ? coll.compare(String(x ?? ''), String(y ?? '')) : (x ?? 0) - (y ?? 0);
-    return (c || b.added_on - a.added_on) * (c ? d : 1);
+    const r = typeof x === 'string' || typeof y === 'string' ? coll.compare(String(x ?? ''), String(y ?? ''))
+      : x === y ? 0 : x === Infinity ? 1 : y === Infinity ? -1 : x === -Infinity ? -1 : y === -Infinity ? 1 : (x ?? 0) - (y ?? 0);
+    return (r || b.added_on - a.added_on) * (r ? d : 1);
   };
 }
-function sortTh(key, label, cls = '') {
+
+/* En-tête et lignes */
+function torrentHeadHTML(cols) {
   const { k, d } = store.get('sort', { k: 'added_on', d: -1 });
-  return `<th class="${cls}" data-sort="${key}" title="Trier par ${label.toLowerCase()}">${label}${k === key ? `<span class="arr">${d > 0 ? '▲' : '▼'}</span>` : ''}</th>`;
+  return `<colgroup><col style="width:${CK_W}px">${cols.map((c) => `<col data-col="${c.k}">`).join('')}</colgroup>
+    <thead><tr><th class="ck"><input type="checkbox" id="selall" title="Tout sélectionner"></th>${cols.map((c) => {
+      const on = k === c.k;
+      return `<th class="${c.num ? 'num ' : ''}${c.k === 'name' ? 'cname' : ''}" data-col="${c.k}" data-sort="${c.k}" tabindex="0" title="${esc(c.l)}"
+        aria-sort="${on ? (d > 0 ? 'ascending' : 'descending') : 'none'}"><span class="thl">${esc(c.l)}</span>${on ? `<span class="arr">${d > 0 ? '▲' : '▼'}</span>` : ''}<span class="rz" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Largeur de la colonne ${esc(c.l)}" title="Glisser pour redimensionner, double-clic pour ajuster au contenu"></span></th>`;
+    }).join('')}</tr></thead>`;
+}
+function torrentRowHTML(t, cols) {
+  const sel = state.sel.has(t.hash);
+  return `<tr class="${sel ? 'sel' : ''}${t.hash === det.hash ? ' focus' : ''}" data-hash="${t.hash}"><td class="ck"><input type="checkbox" ${sel ? 'checked' : ''} aria-label="Sélectionner"></td>${
+    cols.map((c) => `<td class="${c.num ? 'num' : ''}${c.k === 'name' ? 'cname' : ''}">${c.cell(t)}</td>`).join('')}</tr>`;
+}
+// Largeurs : celles choisies, sinon celles par défaut ; tant que l'utilisateur ne l'a pas
+// réglée, la colonne Nom prend la place restante (jamais moins de NAME_MIN).
+let colRO = null;
+function layoutCols() {
+  const table = document.querySelector('#content table.tl');
+  if (!table) return;
+  // La colonne Nom suit la largeur de la zone (fenêtre, panneau de détails ouvert…)
+  if (!colRO) (colRO = new ResizeObserver(() => { if (state.view === 'torrents' && !colRz) layoutCols(); })).observe($('#content'));
+  const cols = [...table.querySelectorAll('col[data-col]')];
+  let others = CK_W;
+  for (const col of cols) if (col.dataset.col !== 'name') others += colW(col.dataset.col);
+  const avail = $('#content').clientWidth;
+  const nameW = cp().w.name ?? Math.max(NAME_MIN, avail - others);
+  for (const col of cols) col.style.width = (col.dataset.col === 'name' ? Math.max(NAME_MIN, nameW) : colW(col.dataset.col)) + 'px';
+  table.style.width = (others + Math.max(NAME_MIN, nameW)) + 'px';
+  table.style.setProperty('--vw', avail + 'px'); // message « aucun torrent » centré dans la partie visible
+  for (const rz of table.querySelectorAll('th .rz')) {
+    const k = rz.parentElement.dataset.col;
+    rz.setAttribute('aria-valuenow', k === 'name' ? Math.max(NAME_MIN, nameW) : colW(k));
+    rz.setAttribute('aria-valuemin', k === 'name' ? NAME_MIN : COL_MIN);
+    rz.setAttribute('aria-valuemax', COL_MAX);
+  }
+}
+phoneCols.addEventListener('change', () => { if (state.view === 'torrents') renderTorrentsView(); });
+
+// Largeur qui affiche entièrement l'en-tête et le contenu de la colonne (torrents visibles)
+function fitColWidth(k) {
+  const c = COLMAP[k], list = visibleTorrents().slice(0, 2000);
+  const box = document.createElement('div');
+  box.className = 'fitbox';
+  box.innerHTML = `<div class="fith">${esc(c.l)}<span class="arr">▼</span></div>` + list.map((t) => `<div>${c.cell(t)}</div>`).join('');
+  document.body.appendChild(box);
+  let max = 0;
+  for (const el of box.children) max = Math.max(max, el.getBoundingClientRect().width);
+  box.remove();
+  return Math.max(k === 'name' ? NAME_MIN : COL_MIN, Math.min(COL_MAX, Math.ceil(max) + 24));
+}
+// Pendant le glissement : seule la colonne déplacée et la largeur du tableau changent
+function resizeLive(k, w) {
+  const table = document.querySelector('#content table.tl'), col = table && table.querySelector(`col[data-col="${CSS.escape(k)}"]`);
+  if (!col) return;
+  const nw = k === 'name' ? Math.max(NAME_MIN, clampW(w)) : clampW(w), old = parseFloat(col.style.width) || 0;
+  cp().w[k] = nw;
+  col.style.width = nw + 'px';
+  table.style.width = (parseFloat(table.style.width) - old + nw) + 'px';
+}
+function setColWidth(k, w, save = true) {
+  cp().w[k] = k === 'name' ? Math.max(NAME_MIN, clampW(w)) : clampW(w);
+  layoutCols();
+  if (save) saveColPrefs();
+}
+
+/* Menu de l'en-tête : colonnes à afficher */
+function colMenuItems() {
+  const p = cp();
+  return [['#', 'Colonnes'], ...['name', ...p.order].map((k) => [`col:${k}`, COLMAP[k].l, null, k === 'name', p.show.has(k)]),
+    '-', ['colfit', 'Redimensionner tout'], ['colreset', 'Réinitialiser les colonnes']];
+}
+function openColMenu(x, y, keyboard) {
+  showMenu(colMenuItems(), x, y);
+  openMenu.el.dataset.keep = '1'; // le menu reste ouvert pour cocher plusieurs colonnes
+  openMenu.el.setAttribute('aria-label', 'Colonnes de la liste');
+  if (keyboard) openMenu.el.querySelector('button:not(:disabled)')?.focus();
+}
+function openColMenuAtHead(keyboard = true) {
+  if (state.view !== 'torrents') showTorrents(state.filter || 'all');
+  const th = document.querySelector('#content th.cname');
+  const r = th ? th.getBoundingClientRect() : { left: 40, bottom: 120 };
+  openColMenu(r.left, r.bottom + 2, keyboard);
+}
+// Action d'un élément du menu des colonnes ; true si le menu doit rester ouvert
+function runColMenu(act) {
+  const p = cp();
+  if (act.startsWith('col:')) {
+    const k = act.slice(4);
+    if (k === 'name' || !COLMAP[k]) return true;
+    if (p.show.has(k)) p.show.delete(k); else p.show.add(k);
+    saveColPrefs(); renderTorrentsView();
+    if (openMenu && openMenu.el.dataset.keep) {
+      openMenu.el.innerHTML = menuHTML(colMenuItems());
+      openMenu.el.querySelector(`[data-mact="col:${CSS.escape(k)}"]`)?.focus();
+    }
+    return true;
+  }
+  if (act === 'colfit') { for (const c of shownCols()) cp().w[c.k] = fitColWidth(c.k); saveColPrefs(); layoutCols(); return false; }
+  if (act === 'colreset') { resetColPrefs(); renderTorrentsView(); toast('Colonnes réinitialisées'); return false; }
+  return false;
+}
+document.addEventListener('contextmenu', (e) => {
+  const head = e.target.closest('#content table.tl thead');
+  if (!head) return;
+  e.preventDefault();
+  // Touche Menu ou Maj+F10 : le menu s'ouvre sous l'en-tête qui a le focus
+  const kb = e.button !== 2 || (!e.clientX && !e.clientY);
+  if (kb) { const r = (e.target.closest('th') || head).getBoundingClientRect(); openColMenu(r.left, r.bottom + 2, true); } else openColMenu(e.clientX, e.clientY, false);
+});
+
+/* Déplacer une colonne (glisser-déposer ou Maj+flèche) */
+function moveCol(k, before) { // before : colonne devant laquelle placer k (null = à la fin)
+  const o = cp().order, i = o.indexOf(k);
+  if (i < 0 || k === before) return;
+  o.splice(i, 1);
+  if (before === null) {
+    // après la dernière colonne affichée (les colonnes masquées ne comptent pas)
+    const shown = o.filter((x) => cp().show.has(x)), last = shown[shown.length - 1];
+    o.splice(last ? o.indexOf(last) + 1 : o.length, 0, k);
+  } else o.splice(o.indexOf(before), 0, k);
+  saveColPrefs();
+}
+let colDrag = null, colRz = null, colNoClick = false;
+document.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
+  const rz = e.target.closest('#content table.tl th .rz');
+  if (rz) {
+    e.preventDefault();
+    const th = rz.parentElement;
+    colRz = { k: th.dataset.col, x0: e.clientX, w0: th.getBoundingClientRect().width };
+    document.body.classList.add('col-resizing');
+    return;
+  }
+  const th = e.target.closest('#content table.tl th[data-col]');
+  if (!th || th.dataset.col === 'name' || e.pointerType === 'touch') return;
+  colDrag = { th, k: th.dataset.col, x0: e.clientX, on: false, before: undefined };
+});
+document.addEventListener('pointermove', (e) => {
+  if (colRz) {
+    // Une seule mise en page par image, même avec des centaines de lignes
+    colRz.x = e.clientX;
+    if (!colRz.raf) colRz.raf = requestAnimationFrame(() => { if (colRz) { colRz.raf = 0; resizeLive(colRz.k, colRz.w0 + colRz.x - colRz.x0); } });
+    return;
+  }
+  if (!colDrag) return;
+  if (!colDrag.on) {
+    if (Math.abs(e.clientX - colDrag.x0) < 6) return;
+    colDrag.on = true;
+    colDrag.th.classList.add('dragging');
+    document.body.classList.add('col-dragging');
+    colDrag.mark = document.createElement('div');
+    colDrag.mark.className = 'coldrop';
+    document.body.appendChild(colDrag.mark);
+  }
+  // Point d'insertion : avant la première colonne dont le milieu est à droite du pointeur
+  const ths = [...document.querySelectorAll('#content table.tl th[data-col]')].filter((x) => x.dataset.col !== 'name');
+  let before = null, x = null;
+  for (const t of ths) { const r = t.getBoundingClientRect(); if (e.clientX < r.left + r.width / 2) { before = t.dataset.col; x = r.left; break; } }
+  const head = document.querySelector('#content table.tl thead').getBoundingClientRect();
+  const nameR = document.querySelector('#content th.cname').getBoundingClientRect();
+  if (x === null) x = ths.length ? ths[ths.length - 1].getBoundingClientRect().right : nameR.right;
+  x = Math.max(x, nameR.right); // la colonne Nom reste la première
+  Object.assign(colDrag.mark.style, { left: (x - 1) + 'px', top: head.top + 'px', height: Math.min(head.height + 220, innerHeight - head.top) + 'px' });
+  colDrag.before = before;
+  // Défilement horizontal près des bords
+  const ct = $('#content'), cr = ct.getBoundingClientRect();
+  if (e.clientX > cr.right - 30) ct.scrollLeft += 20; else if (e.clientX < nameR.right + 30) ct.scrollLeft -= 20;
+});
+function endColPointer() {
+  if (colRz) {
+    const r = colRz; colRz = null;
+    if (r.raf) cancelAnimationFrame(r.raf);
+    if (r.x !== undefined) resizeLive(r.k, r.w0 + r.x - r.x0);
+    document.body.classList.remove('col-resizing'); layoutCols(); saveColPrefs();
+    colNoClick = true; setTimeout(() => { colNoClick = false; }, 0);
+  }
+  if (colDrag) {
+    const d = colDrag; colDrag = null;
+    if (d.on) {
+      d.mark.remove(); document.body.classList.remove('col-dragging');
+      colNoClick = true; setTimeout(() => { colNoClick = false; }, 0);
+      if (d.before !== d.k) { moveCol(d.k, d.before); renderTorrentsView(); }
+      else d.th.classList.remove('dragging');
+    }
+  }
+}
+document.addEventListener('pointerup', endColPointer);
+// Un texte sélectionné (après un double-clic, par exemple) ne doit pas partir en glisser-déposer natif
+document.addEventListener('dragstart', (e) => { if (e.target.closest && e.target.closest('#content table.tl thead')) e.preventDefault(); });
+document.addEventListener('pointercancel', endColPointer);
+document.addEventListener('dblclick', (e) => {
+  const rz = e.target.closest('#content table.tl th .rz');
+  if (rz) setColWidth(rz.parentElement.dataset.col, fitColWidth(rz.parentElement.dataset.col));
+});
+
+/* Clic sur un en-tête : tri */
+function sortBy(k) {
+  const cur = store.get('sort', { k: 'added_on', d: -1 });
+  // Premier clic : ordre croissant (décroissant pour les nombres où le plus grand intéresse)
+  store.set('sort', cur.k === k ? { k, d: -cur.d } : { k, d: SORT_DESC_FIRST.includes(k) ? -1 : 1 });
+  renderTorrentsView();
+  document.querySelector(`#content th[data-col="${CSS.escape(k)}"]`)?.focus();
 }
 document.addEventListener('click', (e) => {
   const th = e.target.closest('th[data-sort]');
-  if (!th) return;
-  const cur = store.get('sort', { k: 'added_on', d: -1 }), k = th.dataset.sort;
-  // Premier clic : ordre croissant (décroissant pour les nombres où le plus grand intéresse)
-  const desc = ['size', 'progress', 'dlspeed', 'upspeed', 'ratio'].includes(k);
-  store.set('sort', cur.k === k ? { k, d: -cur.d } : { k, d: desc ? -1 : 1 });
-  renderTorrentsView();
+  if (!th || colNoClick || e.target.closest('.rz')) return;
+  sortBy(th.dataset.sort);
+});
+
+/* Clavier sur l'en-tête : ←/→ change de colonne, Entrée ou Espace trie, Maj+←/→ déplace
+   la colonne, Menu ou Maj+F10 ouvre le choix des colonnes. Sur une poignée : ←/→ élargit
+   ou rétrécit (Maj : par 50 px), Entrée ajuste au contenu. */
+document.addEventListener('keydown', (e) => {
+  const rz = e.target.closest && e.target.closest('#content table.tl th .rz');
+  if (rz) {
+    const k = rz.parentElement.dataset.col;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault(); e.stopPropagation();
+      setColWidth(k, rz.parentElement.getBoundingClientRect().width + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 50 : 10));
+    } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setColWidth(k, fitColWidth(k)); }
+    return;
+  }
+  const th = e.target.closest && e.target.closest('#content table.tl th[data-col]');
+  if (!th || e.target !== th) return;
+  const ths = [...document.querySelectorAll('#content table.tl th[data-col]')], i = ths.indexOf(th), k = th.dataset.col;
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sortBy(k); }
+  else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    e.preventDefault();
+    if (k === 'name') return;
+    const others = ths.map((x) => x.dataset.col).filter((x) => x !== 'name'), j = others.indexOf(k);
+    if (e.key === 'ArrowLeft' && j > 0) moveCol(k, others[j - 1]);
+    else if (e.key === 'ArrowRight' && j < others.length - 1) moveCol(k, others[j + 2] ?? null);
+    else return;
+    renderTorrentsView();
+    document.querySelector(`#content th[data-col="${CSS.escape(k)}"]`)?.focus();
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault();
+    ths[Math.max(0, Math.min(ths.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)))].focus();
+  }
 });
 
 /* ---------- Clic droit / menu Édition : actions supplémentaires ---------- */

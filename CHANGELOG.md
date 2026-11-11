@@ -2,6 +2,23 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.5.0
+Ajouté
+- Colonnes de la liste des torrents : clic droit sur un en-tête (ou Affichage › Colonnes de la liste…) pour afficher ou masquer les 38 colonnes de qBittorrent (taille totale, sources, pairs, ratio, popularité, créé / ajouté / complété le, tracker, limites, téléchargé, envoyé, restant, temps actif, limite de ratio, dernière activité, disponibilité, info hash, réannonce, privé…), avec leurs libellés officiels en français ; « Redimensionner tout » et « Réinitialiser les colonnes ».
+- Largeur réglable par la poignée au bord de chaque en-tête ; double-clic sur la poignée : largeur ajustée au contenu.
+- Ordre des colonnes modifiable par glisser-déposer des en-têtes.
+- Colonnes, largeurs et ordre mémorisés dans le navigateur (chaque navigateur garde ses propres réglages).
+- Clavier : ←/→ entre les en-têtes, Entrée pour trier, Maj+←/→ pour déplacer une colonne, Maj+F10 ou touche Menu pour le choix des colonnes ; sur une poignée, ←/→ (Maj : par 50 px) et Entrée pour ajuster ; ↑/↓, Début / Fin, →/← et Échap dans tous les menus.
+
+Modifié
+- La colonne Nom reste figée à gauche quand on fait défiler la liste horizontalement et ne descend pas sous 200 px ; elle prend la place restante tant qu'on ne l'a pas redimensionnée.
+- Les en-têtes Restant et Dossier prennent les libellés officiels de qBittorrent : « Temps restant estimé » et « Répertoire de destination » (« Restant » désigne désormais la quantité restant à télécharger, comme dans qBittorrent).
+- Rafraîchissement de la liste : seules les lignes modifiées sont redessinées (listes de plusieurs centaines de torrents).
+
+Corrigé
+- Le début des noms de torrents pouvait être coupé quand la fenêtre était étroite ou que les colonnes étaient nombreuses.
+- Les états longs (« En attente de sources »…) sont tronqués proprement, avec le texte complet au survol.
+
 ## 5.3.4.0
 L'interface explorateur couvre désormais les fonctions de l'interface d'origine de qBittorrent 5.3 ; celle-ci reste disponible en secours (« ⇄ Interface classique »).
 

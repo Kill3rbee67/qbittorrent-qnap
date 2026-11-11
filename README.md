@@ -23,7 +23,7 @@ Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorr
   - limites de vitesse globales et alternatives, journal filtrable, statistiques, créateur de torrent, cookies, association des liens magnet au navigateur.
 - **RSS** : abonnements par dossier (« S'abonner (RSS) » depuis le dossier d'une série : chaque nouvel épisode y est téléchargé automatiquement), avec options avancées (expressions régulières, filtre d'épisode, catégorie, étiquettes…), et **lecteur RSS** pour parcourir les articles des flux et en télécharger un à la main.
 - **Notifications** par e-mail (téléchargement terminé) ou par webhook (Discord, Slack, Mattermost, ntfy, Home Assistant…) à chaque nouveau torrent ou téléchargement terminé.
-- **Suivi des téléchargements** : progression, vitesses, temps restant, colonnes triables, détail par fichier, trackers et pairs.
+- **Suivi des téléchargements** : progression, vitesses, temps restant, détail par fichier, trackers et pairs. Liste personnalisable : les 38 colonnes de qBittorrent à afficher ou masquer (clic droit sur un en-tête), triables, redimensionnables (double-clic sur le bord : ajuster au contenu) et réordonnables par glisser-déposer ; ces choix sont mémorisés dans le navigateur, et « Réinitialiser les colonnes » revient à l'affichage d'origine.
 - **Accès à distance par myQNAPcloud Link** : l'interface est aussi servie par QTS à l'adresse `/qbittorrent/`, sans ouvrir de port sur la box.
 - **HTTPS en option**, avec le certificat du NAS.
 - L'**interface d'origine** de qBittorrent (en français) reste incluse en secours : bouton « ⇄ Interface classique » pour y aller, bouton « ⇄ Interface explorateur » pour revenir.
@@ -239,7 +239,7 @@ src/shared/notify.sh            envoi des notifications web (webhook)
 src/shared/webui/public/        page de connexion
 src/shared/webui/private/       interface « explorateur de fichiers » (l'interface d'origine y est ajoutée au build, sous classic.html)
   index.html                    page principale : navigation, liste, menus, fenêtres de base
-  explorer/torrents.js          synchronisation, tri, clic droit, panneau de détails
+  explorer/torrents.js          synchronisation, colonnes de la liste, tri, clic droit, panneau de détails
   explorer/reglages.js          réglages complémentaires (Outils › Réglages)
   explorer/rss.js               lecteur RSS, flux, options avancées des abonnements, cookies
   explorer/filtres.js           filtres d'état, catégories, étiquettes, trackers
