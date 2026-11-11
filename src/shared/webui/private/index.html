@@ -289,6 +289,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
 
 <script src="explorer/torrents.js?v=__QPKG_VER__"></script>
 <script src="explorer/reglages.js?v=__QPKG_VER__"></script>
+<script src="explorer/rss.js?v=__QPKG_VER__"></script>
 <script>
 'use strict';
 // Racine de navigation : /share sur un QNAP (modifiable avec ?root=/chemin pour les tests)
@@ -400,6 +401,7 @@ const state = {
   dirs: [], files: [], missing: false, loading: false, fileSel: new Set(),
   search: '', fsearch: '',
   mode: store.get('mode', 'list'),
+  rssTab: store.get('rssTab', 'subs'), rssFeed: '', rssArt: null, // RSS : onglet, flux et article sélectionnés
   defaultPath: ROOT,
 };
 const tree = { kids: new Map(), open: new Set() };
@@ -518,12 +520,19 @@ function renderToolbar() {
   } else if (state.view === 'rss') {
     const iv = rss.prefs ? rss.prefs.rss_refresh_interval : 30;
     const opts = [...new Set([5, 10, 15, 30, 60, 120, iv])].sort((a, b) => a - b);
-    tb.innerHTML = `
+    const tabs = `<div class="seg"><button data-rtab="subs" class="${state.rssTab !== 'reader' ? 'on' : ''}" style="width:auto;padding:0 10px">Abonnements</button><button data-rtab="reader" class="${state.rssTab === 'reader' ? 'on' : ''}" style="width:auto;padding:0 10px">Lecteur</button></div>`;
+    tb.innerHTML = tabs + (state.rssTab === 'reader' ? `
+      <button class="btn primary" data-ract="newfeed">${I.plus()}<span>Nouveau flux</span></button>
+      <button class="btn" data-ract="newfolder">${I.newdir()}<span class="lbl-long">Nouveau dossier</span></button>
+      <button class="btn" data-ract="refreshall">${I.refresh()}<span>Actualiser</span></button>
+      <button class="btn" data-ract="${state.rssFeed ? 'read' : 'readall'}">Marquer comme lu</button>
+      <span class="grow"></span>` : `
       <button class="btn primary" data-act="rssnew">${I.plus()}<span>Nouvel abonnement</span></button>
       <button class="btn" data-act="rssrefresh">${I.refresh()}<span>Vérifier<span class="lbl-long"> maintenant</span></span></button>
-      <span class="grow"></span>
+      <span class="grow"></span>`)
+      + (state.rssTab === 'reader' ? '' : `
       <label class="muted" style="display:flex;align-items:center;gap:6px;white-space:nowrap">Vérifier les flux toutes les
-        <select class="search" style="width:auto" data-rssint>${opts.map((m) => `<option value="${m}" ${m === iv ? 'selected' : ''}>${m} min</option>`).join('')}</select></label>`;
+        <select class="search" style="width:auto" data-rssint>${opts.map((m) => `<option value="${m}" ${m === iv ? 'selected' : ''}>${m} min</option>`).join('')}</select></label>`);
   } else {
     const n = state.fileSel.size;
     tb.innerHTML = `
@@ -712,7 +721,7 @@ async function loadRss() {
       api('rss/items?withData=true').then((r) => (r.ok ? r.json() : {})),
       api('app/preferences').then((r) => (r.ok ? r.json() : null)),
     ]);
-    rss.rules = rules || {}; rss.feeds = flattenFeeds(items); rss.prefs = prefs;
+    rss.rules = rules || {}; rss.tree = items || {}; rss.feeds = flattenFeeds(items); rss.prefs = prefs;
     rss.loaded = true;
   } catch (_) {}
   renderFilters();
@@ -727,6 +736,7 @@ function renderRssView() {
   const c = $('#content');
   c.removeAttribute('data-drop');
   if (!rss.loaded) { c.innerHTML = `<div class="empty">Chargement…</div>`; return; }
+  if (state.rssTab === 'reader') return renderRssReader();
   const p = rss.prefs || {};
   const off = !p.rss_processing_enabled || !p.rss_auto_downloading_enabled;
   const warn = off && Object.keys(rss.rules).length ? `<div class="hint" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -758,11 +768,10 @@ function renderRssView() {
   c.innerHTML = warn + `<table><thead><tr><th class="ck" title="Actif">✓</th><th>Abonnement</th><th class="hide-sm">Filtre</th><th>Dossier</th>
     <th class="hide-md">Dernier ajout</th><th class="hide-sm">État du flux</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-// Pour les sites qui proposent un flux RSS de leurs recherches via page=rss, l'adresse de la page de résultats est convertie
+// Adresse du flux : utilisée telle quelle (http ou https)
 function toFeedUrl(s) {
   let u; try { u = new URL(s.trim()); } catch (_) { return null; }
   if (!/^https?:$/.test(u.protocol)) return null;
-  if (/(^|\.)nyaa\.si$/i.test(u.hostname) && u.searchParams.get('page') !== 'rss') u.searchParams.set('page', 'rss');
   return u.toString();
 }
 function nameFromUrl(s) {
@@ -784,7 +793,7 @@ async function waitFeed(url, ms = 25000) {
   }
   return { feed: f, loaded: false };
 }
-function subscribeDialog({ dest = state.defaultPath, name = null } = {}) {
+function subscribeDialog({ dest = state.defaultPath, name = null, url: preUrl = '' } = {}) {
   const r = name ? rss.rules[name] : null, f = r ? feedOf(r) : null;
   if (r) dest = ruleDest(r) || state.defaultPath;
   const stopped = r ? !!((r.torrentParams && r.torrentParams.stopped) ?? r.addPaused) : !store.get('startNow', true);
@@ -792,8 +801,8 @@ function subscribeDialog({ dest = state.defaultPath, name = null } = {}) {
     title: r ? `Modifier « ${name} »` : 'Nouvel abonnement RSS', ok: r ? 'Enregistrer' : 'S\'abonner',
     body: `
       <label>Adresse du flux RSS
-        <input class="field" id="rs-url" ${r ? 'readonly' : ''} value="${esc(f ? f.url : (r ? (r.affectedFeeds || [])[0] || '' : ''))}" placeholder="https://…  (flux RSS de votre recherche)" spellcheck="false"></label>
-      ${r ? '' : `<span class="muted" style="font-size:12.5px;margin-top:-6px">Collez l'adresse du flux RSS de votre recherche. Sur certains sites, l'adresse de la page de résultats suffit : elle est convertie automatiquement en flux RSS.</span>
+        <input class="field" id="rs-url" ${r ? 'readonly' : ''} value="${esc(f ? f.url : (r ? (r.affectedFeeds || [])[0] || '' : preUrl))}" placeholder="https://…  (flux RSS de votre recherche)" spellcheck="false"></label>
+      ${r ? '' : `<span class="muted" style="font-size:12.5px;margin-top:-6px">Collez l'adresse du flux RSS de la page de résultats d'un site de votre choix (souvent un lien ou une icône « RSS » sur cette page).</span>
       <label>Nom de l'abonnement<input class="field" id="rs-name" maxlength="100"></label>`}
       <label><span>Le titre doit contenir <i>(facultatif)</i></span>
         <input class="field" id="rs-must" value="${esc(r ? r.mustContain || '' : '')}" placeholder="vide = tout ce que publie le flux · ex. 1080p"></label>
@@ -804,9 +813,12 @@ function subscribeDialog({ dest = state.defaultPath, name = null } = {}) {
         <input class="field" id="destp" value="${esc(dest)}" spellcheck="false"></div></div>
       <label class="chk"><input type="checkbox" id="rs-smart" ${!r || r.smartFilter ? 'checked' : ''}> Ne pas télécharger deux fois le même épisode</label>
       ${r ? '' : '<label class="chk"><input type="checkbox" id="rs-old"> Télécharger aussi les épisodes déjà publiés dans le flux</label>'}
-      <label class="chk"><input type="checkbox" id="rs-start" ${stopped ? '' : 'checked'}> Démarrer les téléchargements immédiatement</label>`,
+      <label class="chk"><input type="checkbox" id="rs-start" ${stopped ? '' : 'checked'}> Démarrer les téléchargements immédiatement</label>
+      ${ruleAdvancedHTML(r ? { ...r, name } : null)}`,
     onOpen: (bd) => {
+      bd.querySelector('.dlg').dataset.rule = name || '';
       const url = bd.querySelector('#rs-url'), nm = bd.querySelector('#rs-name');
+      if (nm && preUrl) nm.value = nameFromUrl(preUrl);
       if (nm) {
         nm.addEventListener('input', () => { nm.dataset.touched = '1'; });
         url.addEventListener('input', () => { if (!nm.dataset.touched) nm.value = nameFromUrl(url.value); });
@@ -818,11 +830,25 @@ function subscribeDialog({ dest = state.defaultPath, name = null } = {}) {
       if (!destp.startsWith('/')) { err('Le dossier doit être un chemin complet (ex. /share/Download).'); return false; }
       const must = bd.querySelector('#rs-must').value.trim(), not = bd.querySelector('#rs-not').value.trim();
       const smart = bd.querySelector('#rs-smart').checked, start = bd.querySelector('#rs-start').checked;
+      // Options avancées vérifiées avant tout appel à qBittorrent
+      const advErr = ruleAdvancedApply(bd, { mustContain: must, mustNotContain: not });
+      if (advErr) { err(advErr); return false; }
       if (r) {
         const def = { ...r, mustContain: must, mustNotContain: not, smartFilter: smart, savePath: destp, addPaused: !start,
           torrentParams: { ...(r.torrentParams || {}), save_path: destp, stopped: !start } };
+        const bad = ruleAdvancedApply(bd, def);
+        if (bad) { err(bad); return false; }
+        const newName = (bd.querySelector('#ra-name') || {}).value?.trim() || name;
+        if (newName !== name) {
+          if (/\\/.test(newName)) { err('Nom invalide (le caractère \\ est interdit).'); return false; }
+          if (rss.rules[newName]) { err('Un abonnement porte déjà ce nom.'); return false; }
+        }
         const res = await post('rss/setRule', { ruleName: name, ruleDef: JSON.stringify(def) });
         if (!res.ok) { err('qBittorrent a refusé la modification.'); return false; }
+        if (newName !== name) {
+          const rr = await post('rss/renameRule', { ruleName: name, newRuleName: newName });
+          if (!rr.ok) { err('Modifications enregistrées, mais le renommage a été refusé.'); loadRss(); return false; }
+        }
         toast('Abonnement mis à jour'); loadRss(); return;
       }
       const url = toFeedUrl(bd.querySelector('#rs-url').value);
@@ -856,6 +882,8 @@ function subscribeDialog({ dest = state.defaultPath, name = null } = {}) {
       if (!old) await post('rss/markAsRead', { itemPath: feedPath });
       const def = { enabled: true, mustContain: must, mustNotContain: not, useRegex: false, episodeFilter: '', smartFilter: smart,
         affectedFeeds: [url], savePath: destp, addPaused: !start, torrentParams: { save_path: destp, stopped: !start } };
+      const bad = ruleAdvancedApply(bd, def);
+      if (bad) { ok.textContent = 'S\'abonner'; err(bad); if (created) await post('rss/removeItem', { path: feedPath }); return false; }
       const res = await post('rss/setRule', { ruleName: nm, ruleDef: JSON.stringify(def) });
       if (!res.ok) { ok.textContent = 'S\'abonner'; err('qBittorrent a refusé l\'abonnement.'); return false; }
       store.set('startNow', start);
@@ -1084,10 +1112,10 @@ function menus() {
     ['Fichier', [['addfile', 'Ajouter des fichiers .torrent…', I.upload()], ['addlink', 'Ajouter un lien magnet…', I.magnet(16)],
       ['subscribe2', 'Nouvel abonnement RSS…', I.rss()], '-', ['logout', 'Déconnexion']]],
     ['Édition', editItems()],
-    ['Affichage', [['vdl', 'Téléchargements'], ['vrss', 'Abonnements RSS', I.rss()], '-', ['log', 'Journal…'], ['stats', 'Statistiques…'],
+    ['Affichage', [['vdl', 'Téléchargements'], ['vrss', 'Abonnements RSS', I.rss()], ['vreader', 'Lecteur RSS'], '-', ['log', 'Journal…'], ['stats', 'Statistiques…'],
       '-', ['titlespeed', 'Vitesse dans la barre de titre', null, false, !!store.get('titleSpeed', false)]]],
     ['Outils', [['settings', 'Réglages…'], ['alt', 'Limites de vitesse alternatives', null, false, !!state.altSpeed], '-',
-      ['passwd', 'Mot de passe…']]],
+      ['cookies', 'Gérer les cookies…'], '-', ['passwd', 'Mot de passe…']]],
     ['Aide', [['about', 'À propos…'], ['guide', 'Guide d\'utilisation'], ['issue', 'Signaler un problème']]],
   ];
 }
@@ -1175,7 +1203,9 @@ async function runMenu(act) {
     case 'resumesession': return (await apiAct('transfer/resumeSession', {})) && done('Session reprise');
     case 'titlespeed': store.set('titleSpeed', !store.get('titleSpeed', false)); return updateTitle();
     case 'vdl': return showTorrents('all');
-    case 'vrss': return showRss();
+    case 'vrss': state.rssTab = 'subs'; store.set('rssTab', 'subs'); return showRss();
+    case 'vreader': state.rssTab = 'reader'; store.set('rssTab', 'reader'); return showRss();
+    case 'cookies': return cookiesDialog();
     case 'log': return logDialog();
     case 'stats': return statsDialog();
     case 'settings': return settingsDialog();
@@ -1565,7 +1595,7 @@ function freeHTML() {
   return `<span class="st ${cls}" title="Espace libre dans le dossier de téléchargement par défaut">Espace libre : ${fmtSize(state.free)}</span>`;
 }
 
-function openAddDialog({ files = [], nas = [], magnet = false }) {
+function openAddDialog({ files = [], nas = [], magnet = false, links = [] }) {
   const dest = state.view === 'folder' && state.path ? state.path : state.defaultPath;
   const items = [
     ...files.map((f) => `<li>${I.torrent(18)}<span>${esc(f.name)}</span><small>depuis le PC</small></li>`),
@@ -1575,7 +1605,7 @@ function openAddDialog({ files = [], nas = [], magnet = false }) {
   dialog({
     title: magnet ? 'Ajouter des liens magnet' : `Ajouter ${count} torrent${count > 1 ? 's' : ''}`,
     ok: 'Ajouter',
-    body: `${magnet ? `<label>Liens magnet ou adresses de fichiers .torrent (un par ligne)<textarea id="mg" rows="5" placeholder="magnet:?xt=urn:btih:…"></textarea></label>` : `<ul class="addlist">${items}</ul>`}
+    body: `${magnet ? `<label>Liens magnet ou adresses de fichiers .torrent (un par ligne)<textarea id="mg" rows="5" placeholder="magnet:?xt=urn:btih:…">${esc(links.join('\n'))}</textarea></label>` : `<ul class="addlist">${items}</ul>`}
       <div class="dest">${I.folder(28, isVirtual(dest))}<div style="flex:1;min-width:0;display:grid;gap:4px"><small>Enregistrer dans</small>
         <input class="field" id="destp" value="${esc(dest)}" spellcheck="false">
         ${normalize(state.defaultPath) !== dest ? `<small><a href="#" id="usedef" style="color:var(--blue)">Utiliser le dossier par défaut (${esc(relPath(state.defaultPath))})</a></small>` : ''}
@@ -1672,6 +1702,8 @@ document.addEventListener('click', async (e) => {
   const t = e.target;
   // Abonnements RSS
   if (t.closest('[data-view=rss]')) return showRss();
+  const rt = t.closest('[data-rtab]');
+  if (rt) { state.rssTab = rt.dataset.rtab; store.set('rssTab', state.rssTab); renderToolbar(); renderRssView(); return renderStatus(); }
   const re = t.closest('[data-rss-edit]');
   if (re) return subscribeDialog({ name: re.dataset.rssEdit });
   const rd = t.closest('[data-rss-del]');

@@ -145,6 +145,8 @@ function torrentExtraItems(s) {
 async function runTorrentMenu(a, hs) {
   // Menu contextuel du panneau de détails (préfixe « d: »)
   if (a.startsWith('d:')) { runDetailAction(a.slice(2)); return true; }
+  // Menu contextuel du lecteur RSS (préfixe « r: »)
+  if (a.startsWith('r:')) { runRssAction(a.slice(2)); return true; }
   const n = hs.length, H = hs.join('|'), ts = selTorrents();
   // qBittorrent peut mettre quelques secondes à renvoyer le changement : on l'affiche tout de suite
   const local = (key, want) => { ts.forEach((t) => { t[key] = want; }); renderTorrentRows(); if (det.hash) renderDetails(); };
