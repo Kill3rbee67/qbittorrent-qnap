@@ -178,6 +178,20 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
   .menu .mi { width:18px; display:flex; justify-content:center; color:var(--muted); flex:none; }
   .menu hr { border:0; border-top:1px solid var(--border); margin:4px 0; }
   .menu .mh { padding:8px 14px 3px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+  .menu button .sub { margin-left:auto; padding-left:18px; color:var(--muted); }
+  .menu button.open { background:var(--hover); }
+  th[data-sort] { cursor:pointer; user-select:none; }
+  th[data-sort]:hover { color:var(--blue-dark); }
+  th .arr { font-size:10px; margin-left:3px; color:var(--blue); }
+  .dtool { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:8px 12px; border-bottom:1px solid var(--border); background:#fafbfd; }
+  .dtool .btn { padding:4px 10px; font-size:12.5px; }
+  .dbody tr.dsel td { background:var(--sel); }
+  .st.offline { background:#fde8e8; color:var(--red); }
+  .preview { max-height:220px; overflow:auto; border:1px solid var(--border); border-radius:4px; font-size:12.5px; }
+  .preview td { padding:3px 8px; } .preview .old { color:var(--muted); text-decoration:line-through; }
+  .radio { display:flex; align-items:center; gap:8px; } .radio input { margin:0; }
+  .sub-fields { display:grid; gap:6px; padding-left:24px; }
+  .sub-fields label.chk { display:flex; gap:8px; align-items:center; }
   /* --- Fenêtres larges : réglages, journal --- */
   .dlg.wide { max-width:900px; }
   .settings { display:grid; grid-template-columns:190px minmax(0,1fr); margin:-16px -18px 0; min-height:440px; }
@@ -260,6 +274,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
         <button class="tab" data-dtab="files">Fichiers</button>
         <button class="tab" data-dtab="trackers">Trackers</button>
         <button class="tab" data-dtab="peers">Pairs</button>
+        <button class="tab" data-dtab="webseeds">Sources HTTP</button>
         <span class="dname" id="dname"></span>
         <button class="ibtn" data-act="closedet" title="Fermer le panneau" aria-label="Fermer">✕</button>
       </div>
@@ -272,6 +287,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
 <input type="file" id="pick" accept=".torrent,application/x-bittorrent" multiple hidden>
 <div class="toast" id="toast" role="status"></div>
 
+<script src="explorer/torrents.js?v=__QPKG_VER__"></script>
 <script>
 'use strict';
 // Racine de navigation : /share sur un QNAP (modifiable avec ?root=/chemin pour les tests)
@@ -550,15 +566,15 @@ function visibleTorrents() {
   return state.torrents
     .filter((t) => state.pathFilter ? normalize(t.save_path) === state.pathFilter : f(t))
     .filter((t) => !q || t.name.toLowerCase().includes(q))
-    .sort((a, b) => b.added_on - a.added_on);
+    .sort(torrentSorter());
 }
 function renderTorrentsView() {
   const c = $('#content');
   c.removeAttribute('data-drop');
   c.innerHTML = `<table><thead><tr>
       <th class="ck"><input type="checkbox" id="selall" title="Tout sélectionner"></th>
-      <th>Nom</th><th class="num hide-sm">Taille</th><th>Progression</th><th class="hide-sm">État</th>
-      <th class="num hide-md">Réception</th><th class="num hide-md">Envoi</th><th class="num hide-sm">Restant</th><th class="hide-md">Dossier</th>
+      ${sortTh('name', 'Nom')}${sortTh('size', 'Taille', 'num hide-sm')}${sortTh('progress', 'Progression')}${sortTh('state', 'État', 'hide-sm')}
+      ${sortTh('dlspeed', 'Réception', 'num hide-md')}${sortTh('upspeed', 'Envoi', 'num hide-md')}${sortTh('eta', 'Restant', 'num hide-sm')}${sortTh('save_path', 'Dossier', 'hide-md')}
     </tr></thead><tbody id="trows"></tbody></table>`;
   renderTorrentRows();
 }
@@ -634,6 +650,10 @@ function renderFolderView() {
 /* ---------- Barre d'état ---------- */
 function renderStatus() {
   const sb = $('#statusbar');
+  if (state.offline >= 2) {
+    sb.innerHTML = `<span class="st offline">qBittorrent ne répond pas</span><span>Vérifiez qu'il est démarré dans l'App Center. Nouvelle tentative toutes les 2 secondes…</span>`;
+    return;
+  }
   if (state.view === 'torrents') {
     const n = visibleTorrents().length;
     sb.innerHTML = `<span>${n} torrent${n > 1 ? 's' : ''}</span>${state.sel.size ? `<span>${state.sel.size} sélectionné${state.sel.size > 1 ? 's' : ''}</span>` : ''}${connHTML()}${freeHTML()}`;
@@ -864,29 +884,31 @@ function deleteRssDialog(name) {
 }
 
 /* ---------- Panneau de détails (comme Download Station) ---------- */
-const det = { hash: null, tab: store.get('dtab', 'info'), props: null, files: null, token: 0 };
+const det = { hash: null, tab: store.get('dtab', 'info'), props: null, files: null, webseeds: null, token: 0, sel: new Set() };
 const fmtDate = (s) => (s > 0 ? new Date(s * 1000).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'medium' }) : '—');
 function fmtDur(s) {
   if (!(s >= 0) || s >= 8640000) return '—';
   const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
   return [d && `${d} j`, (d || h) && `${h} h`, `${m} min`].filter(Boolean).join(' ');
 }
-function openDetails(hash) { det.hash = hash; det.props = det.files = det.trackers = det.peers = null; renderDetails(); loadDetails(); }
+function openDetails(hash) { if (det.hash !== hash) det.sel.clear(); det.hash = hash; det.props = det.files = det.trackers = det.peers = det.webseeds = null; renderDetails(); loadDetails(); }
 function closeDetails() { det.hash = null; renderDetails(); renderTorrentRows(); }
 async function loadDetails() {
   if (!det.hash || state.view !== 'torrents') return;
   const h = det.hash, tok = ++det.token;
   const json = (path) => api(path).then((r) => (r.ok ? r.json() : null));
   try {
-    const [p, f, tr, pe] = await Promise.all([
+    const [p, f, tr, pe, ws] = await Promise.all([
       json('torrents/properties?hash=' + h),
       json('torrents/files?hash=' + h),
       json('torrents/trackers?hash=' + h),
       det.tab === 'peers' ? json('sync/torrentPeers?rid=0&hash=' + h) : Promise.resolve(det.peers),
+      det.tab === 'webseeds' ? json('torrents/webseeds?hash=' + h) : Promise.resolve(det.webseeds),
     ]);
     if (tok !== det.token || h !== det.hash) return;
     det.props = p; det.files = f; det.trackers = tr;
     det.peers = det.tab === 'peers' ? (pe && pe.peers) || {} : null;
+    det.webseeds = det.tab === 'webseeds' ? ws || [] : null;
     renderDetails();
   } catch (_) {}
 }
@@ -902,7 +924,8 @@ function trackersHTML() {
     // qBittorrent 5.x : le message d'erreur peut être porté par chaque « endpoint »
     const msgs = [x.msg, ...((x.endpoints || []).map((e) => e.msg))].filter(Boolean);
     const n = (v) => (v >= 0 ? v : '—');
-    return `<tr>
+    const rid = pseudo[x.url] ? '' : `data-drow="t${esc(x.url)}"`;
+    return `<tr ${rid} class="${det.sel.has('t' + x.url) ? 'dsel' : ''}">
       <td><div class="name"><span title="${esc(x.url)}">${esc(pseudo[x.url] || x.url)}</span></div></td>
       <td><span class="st ${cls}">${label}</span></td>
       <td class="num">${n(x.num_seeds)}</td><td class="num">${n(x.num_leeches)}</td><td class="num hide-sm">${n(x.num_peers)}</td>
@@ -922,7 +945,8 @@ function peersHTML() {
   peers.sort((a, b) => (b.dl_speed - a.dl_speed) || (b.progress - a.progress));
   return `<table><thead><tr><th>Adresse</th><th class="hide-sm">Client</th><th>Progression</th><th class="num">Réception</th><th class="num">Envoi</th><th class="hide-md">Pays</th></tr></thead><tbody>${peers.map((x) => {
     const pct = Math.floor((x.progress || 0) * 1000) / 10;
-    return `<tr><td class="muted">${esc(x.ip)}:${x.port}</td><td class="hide-sm">${esc(x.client || '—')}</td>
+    const id = `p${x.ip.includes(':') ? `[${x.ip}]` : x.ip}:${x.port}`;
+    return `<tr data-drow="${esc(id)}" class="${det.sel.has(id) ? 'dsel' : ''}"><td class="muted">${esc(x.ip)}:${x.port}</td><td class="hide-sm">${esc(x.client || '—')}</td>
       <td><div class="prog ${pct >= 100 ? 'done' : ''}"><i style="width:${pct}%"></i><b>${pct.toLocaleString('fr-FR')} %</b></div></td>
       <td class="num">${fmtSpeed(x.dl_speed)}</td><td class="num">${fmtSpeed(x.up_speed)}</td><td class="hide-md">${esc(x.country || '—')}</td></tr>`;
   }).join('')}</tbody></table>`;
@@ -936,12 +960,17 @@ function renderDetails() {
     b.classList.toggle('on', b.dataset.dtab === det.tab);
     if (b.dataset.dtab === 'files') b.textContent = 'Fichiers' + (det.files && det.files.length ? ` (${det.files.length})` : '');
     if (b.dataset.dtab === 'peers' && det.props) b.textContent = `Pairs (${(det.props.seeds || 0) + (det.props.peers || 0)})`;
+    if (b.dataset.dtab === 'webseeds' && det.webseeds) b.textContent = 'Sources HTTP' + (det.webseeds.length ? ` (${det.webseeds.length})` : '');
   });
   $('#dname').textContent = t ? t.name : '';
   const body = $('#dbody');
   if (!det.props && !det.files) { body.innerHTML = `<div class="empty" style="padding:30px">Chargement…</div>`; return; }
-  if (det.tab === 'peers' && det.peers === null) { body.innerHTML = `<div class="empty" style="padding:30px">Chargement…</div>`; return; }
-  body.innerHTML = det.tab === 'files' ? filesHTML(t) : det.tab === 'trackers' ? trackersHTML() : det.tab === 'peers' ? peersHTML() : infoHTML(t, det.props || {});
+  if ((det.tab === 'peers' && det.peers === null) || (det.tab === 'webseeds' && det.webseeds === null)) { body.innerHTML = `<div class="empty" style="padding:30px">Chargement…</div>`; return; }
+  // Le panneau est redessiné à chaque rafraîchissement : on garde la position de défilement
+  const top = body.scrollTop;
+  body.innerHTML = detToolHTML(det.tab) + (det.tab === 'files' ? filesHTML(t) : det.tab === 'trackers' ? trackersHTML() : det.tab === 'peers' ? peersHTML()
+    : det.tab === 'webseeds' ? webseedsHTML() : infoHTML(t, det.props || {}));
+  body.scrollTop = top;
 }
 function infoHTML(t, p) {
   const [label] = (t && ST[t.state]) || [t ? t.state : '—'];
@@ -962,8 +991,10 @@ function infoHTML(t, p) {
     ['Sources', p.seeds_total >= 0 ? `${p.seeds} connectée${p.seeds > 1 ? 's' : ''} sur ${p.seeds_total}` : '—'],
     ['Pairs', p.peers_total >= 0 ? `${p.peers} connecté${p.peers > 1 ? 's' : ''} sur ${p.peers_total}` : '—'],
     ['Pièces', p.pieces_num > 0 ? `${p.pieces_have} / ${p.pieces_num} (${fmtSize(p.piece_size)})` : '—'],
+    ...infoExtraRows(t, p),
     // Valeurs longues : sur toute la largeur du panneau
     ['Dossier', p.save_path ? `<span class="folderlink" data-folder="${esc(normalize(p.save_path))}">${esc(normalize(p.save_path))}</span>` : '—', true, true],
+    ...infoHashRows(t),
   ];
   if (p.comment) {
     const c = p.comment.trim();
@@ -981,17 +1012,18 @@ function filesHTML(t) {
   const allOn = list.every((f) => f.priority > 0);
   return `<table><thead><tr>
       <th class="ck"><input type="checkbox" data-fprio-all ${allOn ? 'checked' : ''} title="Tout télécharger / ne rien télécharger"></th>
-      <th>Nom du fichier</th><th class="num">Taille</th><th class="hide-sm">Type</th><th>Progression</th><th class="hide-sm">Terminé</th>
+      <th>Nom du fichier</th><th class="num">Taille</th><th class="hide-sm">Type</th><th>Progression</th><th class="hide-sm">Priorité</th><th class="hide-sm">Terminé</th>
     </tr></thead><tbody>${list.map((f) => {
       const pct = Math.floor(f.progress * 1000) / 10, skip = f.priority === 0;
       const ext = (f.name.match(/\.([^./]{1,6})$/) || [])[1];
       const fin = skip ? 'Ignoré' : f.progress >= 1 ? 'Oui' : 'Non';
-      return `<tr class="${skip ? 'skip' : ''}">
+      return `<tr class="${skip ? 'skip' : ''}${det.sel.has('f' + f.idx) ? ' dsel' : ''}" data-drow="f${f.idx}">
         <td class="ck"><input type="checkbox" data-fprio="${f.idx}" ${skip ? '' : 'checked'} title="${skip ? 'Ne sera pas téléchargé' : 'Sera téléchargé'}"></td>
         <td><div class="name" title="${esc(f.name)}">${I.file(18)}<span>${esc(f.short)}</span></div></td>
         <td class="num">${fmtSize(f.size)}</td>
         <td class="hide-sm muted">${ext ? ext.toLowerCase() : '—'}</td>
         <td><div class="prog ${skip ? 'stop' : pct >= 100 ? 'done' : ''}"><i style="width:${pct}%"></i><b>${pct.toLocaleString('fr-FR')} %</b></div></td>
+        <td class="hide-sm">${esc(PRIO[f.priority] || f.priority)}</td>
         <td class="hide-sm">${fin}</td></tr>`;
     }).join('')}</tbody></table>`;
 }
@@ -1040,8 +1072,10 @@ function editItems(context = false) {
     '-', ['move', 'Déplacer vers un autre dossier…', I.newdir(), !s], ['recheck', 'Revérifier les fichiers', null, !s], ['reannounce', 'Réannoncer aux trackers', null, !s],
     '-', ['qtop', 'Haut de la file d\'attente', null, q], ['qup', 'Monter dans la file', null, q], ['qdown', 'Descendre dans la file', null, q], ['qbottom', 'Bas de la file d\'attente', null, q],
     '-', ['delete', 'Supprimer…', I.trash(), !s],
+    ...torrentExtraItems(s),
     ...(context ? [] : ['-', ['selall', 'Tout sélectionner', null, inList], ['invert', 'Inverser la sélection', null, inList],
-      '-', ['startall', 'Tout démarrer', I.play()], ['stopall', 'Tout arrêter', I.stop()]]),
+      '-', ['startall', 'Tout démarrer', I.play()], ['stopall', 'Tout arrêter', I.stop()],
+      sessionPaused() ? ['resumesession', 'Reprendre la session', I.play()] : ['pausesession', 'Suspendre la session (tous les torrents)', I.stop()]]),
   ];
 }
 function menus() {
@@ -1049,7 +1083,8 @@ function menus() {
     ['Fichier', [['addfile', 'Ajouter des fichiers .torrent…', I.upload()], ['addlink', 'Ajouter un lien magnet…', I.magnet(16)],
       ['subscribe2', 'Nouvel abonnement RSS…', I.rss()], '-', ['logout', 'Déconnexion']]],
     ['Édition', editItems()],
-    ['Affichage', [['vdl', 'Téléchargements'], ['vrss', 'Abonnements RSS', I.rss()], '-', ['log', 'Journal…'], ['stats', 'Statistiques…']]],
+    ['Affichage', [['vdl', 'Téléchargements'], ['vrss', 'Abonnements RSS', I.rss()], '-', ['log', 'Journal…'], ['stats', 'Statistiques…'],
+      '-', ['titlespeed', 'Vitesse dans la barre de titre', null, false, !!store.get('titleSpeed', false)]]],
     ['Outils', [['settings', 'Réglages…'], ['alt', 'Limites de vitesse alternatives', null, false, !!state.altSpeed], '-',
       ['passwd', 'Mot de passe…'], ['advanced', 'Réglages avancés (interface classique)…']]],
     ['Aide', [['about', 'À propos…'], ['guide', 'Guide d\'utilisation'], ['issue', 'Signaler un problème']]],
@@ -1059,27 +1094,47 @@ function menuHTML(items) {
   return items.map((it) => {
     if (it === '-') return '<hr>';
     if (it[0] === '#') return `<div class="mh">${esc(it[1])}</div>`;
-    const [act, label, icon, disabled, checked] = it;
-    const mark = checked !== undefined ? (checked ? '✓' : '') : (icon || '');
-    return `<button role="menuitem${checked !== undefined ? 'checkbox' : ''}" data-mact="${act}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}</button>`;
+    const [act, label, icon, disabled, checked, sub] = it;
+    const mark = checked !== undefined && checked !== null ? (checked ? '✓' : '') : (icon || '');
+    if (sub) return `<button role="menuitem" aria-haspopup="menu" data-msub="${esc(act)}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}<span class="sub">›</span></button>`;
+    return `<button role="menuitem${checked !== undefined && checked !== null ? 'checkbox' : ''}" data-mact="${esc(act)}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}</button>`;
   }).join('');
 }
 let openMenu = null;
-function closeMenu() { if (!openMenu) return; openMenu.el.remove(); if (openMenu.btn) openMenu.btn.classList.remove('open'); openMenu = null; }
+function closeSub() { if (openMenu && openMenu.subEl) { openMenu.subEl.remove(); openMenu.subBtn.classList.remove('open'); openMenu.subEl = openMenu.subBtn = null; } }
+function closeMenu() { if (!openMenu) return; closeSub(); openMenu.el.remove(); if (openMenu.btn) openMenu.btn.classList.remove('open'); openMenu = null; }
+function placeMenu(m, x, y, alt = null) {
+  const r = m.getBoundingClientRect();
+  // Si le menu dépasse à droite, on l'ouvre de l'autre côté (sous-menus)
+  const left = x + r.width > innerWidth - 4 && alt !== null ? alt - r.width : x;
+  m.style.left = Math.max(4, Math.min(left, innerWidth - r.width - 4)) + 'px';
+  m.style.top = Math.max(4, Math.min(y, innerHeight - r.height - 4)) + 'px';
+}
 function showMenu(items, x, y, btn = null) {
   closeMenu();
   const m = document.createElement('div');
   m.className = 'menu'; m.setAttribute('role', 'menu'); m.innerHTML = menuHTML(items);
   document.body.appendChild(m);
-  const r = m.getBoundingClientRect();
-  m.style.left = Math.max(4, Math.min(x, innerWidth - r.width - 4)) + 'px';
-  m.style.top = Math.max(4, Math.min(y, innerHeight - r.height - 4)) + 'px';
-  openMenu = { el: m, btn };
+  placeMenu(m, x, y);
+  // Sous-menus : retrouvés par leur action
+  const subs = {};
+  const walk = (list) => list.forEach((it) => { if (Array.isArray(it) && it[5]) { subs[it[0]] = it[5]; walk(it[5]); } });
+  walk(items);
+  openMenu = { el: m, btn, subs };
   if (btn) btn.classList.add('open');
 }
+function openSub(b) {
+  if (!openMenu || b.disabled || openMenu.subBtn === b) return;
+  closeSub();
+  const m = document.createElement('div');
+  m.className = 'menu'; m.setAttribute('role', 'menu'); m.innerHTML = menuHTML(openMenu.subs[b.dataset.msub] || []);
+  document.body.appendChild(m);
+  const r = b.getBoundingClientRect();
+  placeMenu(m, r.right - 2, r.top - 4, r.left + 2);
+  openMenu.subEl = m; openMenu.subBtn = b; b.classList.add('open');
+}
 async function openTopMenu(btn) {
-  // État des limites de vitesse alternatives, pour la coche du menu Outils
-  try { state.altSpeed = (await api('transfer/speedLimitsMode').then((r) => r.text())).trim() === '1'; } catch (_) {}
+  // L'état des limites alternatives (coche du menu Outils) vient de sync/maindata
   const all = menus(), i = btn.dataset.menu;
   const items = i === 'all' ? all.flatMap(([t, it], k) => [...(k ? ['-'] : []), ['#', t], ...it]) : all[i][1];
   const r = btn.getBoundingClientRect();
@@ -1090,37 +1145,41 @@ function renderMenubar() {
     + '<button class="mall" data-menu="all" aria-haspopup="menu">Menu ▾</button>';
 }
 async function runMenu(act) {
-  const hs = selHashes(), n = hs.length, p = (path, extra = {}) => post(path, { hashes: hs.join('|'), ...extra });
-  const done = (msg) => { toast(msg); setTimeout(poll, 400); };
+  const hs = selHashes(), n = hs.length, p = (path, extra = {}) => apiAct(path, { hashes: hs.join('|'), ...extra });
+  const done = (msg) => { if (msg) toast(msg); setTimeout(poll, 400); };
+  if (await runTorrentMenu(act, hs)) return;
   switch (act) {
     case 'addfile': return $('#pick').click();
     case 'addlink': return openAddDialog({ magnet: true });
     case 'subscribe2': return subscribeDialog({ dest: state.view === 'folder' ? state.path : state.defaultPath });
     case 'logout': return $('#logout').click();
     case 'start': case 'stop': { const ok = await torrentAction(act, hs); return done(ok ? (act === 'start' ? 'Démarré' : 'Arrêté') : 'Action refusée'); }
-    case 'force': await p('torrents/setForceStart', { value: 'true' }); return done(`Reprise forcée pour ${n} torrent${n > 1 ? 's' : ''}`);
+    case 'force': return (await p('torrents/setForceStart', { value: 'true' })) && done(`Reprise forcée pour ${n} torrent${n > 1 ? 's' : ''}`);
     case 'move': return moveDialog();
-    case 'recheck': await p('torrents/recheck'); return done('Vérification des fichiers lancée');
-    case 'reannounce': await p('torrents/reannounce'); return done('Annonce envoyée aux trackers');
-    case 'qtop': await p('torrents/topPrio'); return done('Placé en haut de la file');
-    case 'qup': await p('torrents/increasePrio'); return done('Monté dans la file');
-    case 'qdown': await p('torrents/decreasePrio'); return done('Descendu dans la file');
-    case 'qbottom': await p('torrents/bottomPrio'); return done('Placé en bas de la file');
+    case 'recheck': return (await p('torrents/recheck')) && done('Vérification des fichiers lancée');
+    case 'reannounce': return (await p('torrents/reannounce')) && done('Annonce envoyée aux trackers');
+    case 'qtop': return (await p('torrents/topPrio')) && done('Placé en haut de la file');
+    case 'qup': return (await p('torrents/increasePrio')) && done('Monté dans la file');
+    case 'qdown': return (await p('torrents/decreasePrio')) && done('Descendu dans la file');
+    case 'qbottom': return (await p('torrents/bottomPrio')) && done('Placé en bas de la file');
     case 'delete': return deleteDialog();
     case 'selall': case 'invert': {
       const list = visibleTorrents();
       if (act === 'selall') list.forEach((t) => state.sel.add(t.hash)); else list.forEach((t) => (state.sel.has(t.hash) ? state.sel.delete(t.hash) : state.sel.add(t.hash)));
       renderTorrentRows(); renderToolbar(); return renderStatus();
     }
-    case 'startall': await post('torrents/start', { hashes: 'all' }); return done('Tous les torrents ont été démarrés');
-    case 'stopall': await post('torrents/stop', { hashes: 'all' }); return done('Tous les torrents ont été arrêtés');
+    case 'startall': return (await apiAct('torrents/start', { hashes: 'all' })) && done('Tous les torrents ont été démarrés');
+    case 'stopall': return (await apiAct('torrents/stop', { hashes: 'all' })) && done('Tous les torrents ont été arrêtés');
+    case 'pausesession': return (await apiAct('transfer/pauseSession', {})) && done('Session suspendue : plus aucun échange jusqu\'à la reprise');
+    case 'resumesession': return (await apiAct('transfer/resumeSession', {})) && done('Session reprise');
+    case 'titlespeed': store.set('titleSpeed', !store.get('titleSpeed', false)); return updateTitle();
     case 'vdl': return showTorrents('all');
     case 'vrss': return showRss();
     case 'log': return logDialog();
     case 'stats': return statsDialog();
     case 'settings': return settingsDialog();
     case 'alt': {
-      await post('transfer/toggleSpeedLimitsMode', {});
+      if (!(await apiAct('transfer/toggleSpeedLimitsMode', {}))) return;
       const on = (await api('transfer/speedLimitsMode').then((r) => r.text())).trim() === '1';
       state.altSpeed = on;
       return toast(on ? 'Limites de vitesse alternatives activées' : 'Limites de vitesse normales rétablies');
@@ -1135,6 +1194,8 @@ async function runMenu(act) {
 document.addEventListener('click', (e) => {
   const mb = e.target.closest('[data-menu]');
   if (mb) { if (openMenu && openMenu.btn === mb) closeMenu(); else openTopMenu(mb); return; }
+  const ms = e.target.closest('.menu [data-msub]');
+  if (ms) { openSub(ms); return; }
   const mi = e.target.closest('.menu [data-mact]');
   if (mi) { closeMenu(); runMenu(mi.dataset.mact); return; }
   if (openMenu && !e.target.closest('.menu')) closeMenu();
@@ -1143,6 +1204,9 @@ document.addEventListener('click', (e) => {
 document.addEventListener('mouseover', (e) => {
   const mb = e.target.closest('#menubar [data-menu]');
   if (mb && openMenu && openMenu.btn && openMenu.btn !== mb && mb.dataset.menu !== 'all') openTopMenu(mb);
+  // Survol d'un élément du menu principal : ouvre son sous-menu, ou ferme celui qui est ouvert
+  const it = e.target.closest('.menu button');
+  if (it && openMenu && it.parentElement === openMenu.el) { if (it.dataset.msub) openSub(it); else closeSub(); }
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
 // Clic droit sur un torrent : menu Édition
@@ -1641,8 +1705,9 @@ document.addEventListener('click', async (e) => {
   // Panneau de détails : onglets, fermeture, fichiers à télécharger ou non
   const dt = t.closest('[data-dtab]');
   if (dt) {
-    det.tab = dt.dataset.dtab; store.set('dtab', det.tab);
+    det.tab = dt.dataset.dtab; store.set('dtab', det.tab); det.sel.clear();
     if (det.tab === 'peers') { det.peers = null; loadDetails(); }
+    if (det.tab === 'webseeds') { det.webseeds = null; loadDetails(); }
     return renderDetails();
   }
   if (t.closest('[data-act=closedet]')) return closeDetails();
@@ -1755,11 +1820,11 @@ async function poll() {
   if (polling || document.hidden) return;
   polling = true;
   try {
-    const [tl, tr] = await Promise.all([api('torrents/info').then((r) => r.json()), api('transfer/info').then((r) => r.json())]);
-    state.torrents = tl;
+    const tr = await syncMain();
     $('#spd-dl').textContent = '↓ ' + fmtSpeed(tr.dl_info_speed);
     $('#spd-up').textContent = '↑ ' + fmtSpeed(tr.up_info_speed);
     state.conn = tr;
+    updateTitle();
     if (!state.freeAt || Date.now() - state.freeAt > 30000) { state.freeAt = Date.now(); freeSpace(state.defaultPath).then((f) => { state.free = f; }); }
     renderFilters();
     if (state.view === 'torrents') {
@@ -1769,8 +1834,12 @@ async function poll() {
       if (det.hash) { if (state.torrents.some((x) => x.hash === det.hash)) loadDetails(); else renderDetails(); }
     }
     if (state.view === 'rss' && Date.now() - rss.last > 10000 && !document.querySelector('.backdrop')) loadRss();
+    if (state.offline) { state.offline = 0; renderToolbar(); }
     renderStatus();
-  } catch (_) {}
+  } catch (e) {
+    // qBittorrent arrêté, NAS injoignable… : signalé dans la barre d'état après deux échecs
+    if (e.message !== 'session') { state.offline = (state.offline || 0) + 1; if (state.offline >= 2) renderStatus(); }
+  }
   polling = false;
 }
 
