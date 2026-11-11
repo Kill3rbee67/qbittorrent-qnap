@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <plugins>
-  <cachechk>20261111215435</cachechk>
+  <cachechk>20261111225704</cachechk>
   <item>
     <name>qBittorrent</name>
     <internalName>qBittorrent</internalName>
@@ -12,42 +12,42 @@
     <developer>qbittorrent-qnap (projet communautaire)</developer>
     <developerLink>https://github.com/Kill3rbee67/qbittorrent-qnap</developerLink>
     <fwVersion>4.5.0</fwVersion>
-    <version>5.3.5.0</version>
+    <version>5.3.5.1</version>
     <platform>
       <platformID>TS-NASX86</platformID>
-      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.0/qBittorrent_5.3.5.0_x86_64.qpkg</location>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.1/qBittorrent_5.3.5.1_x86_64.qpkg</location>
     </platform>
     <platform>
       <platformID>TS-X73</platformID>
-      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.0/qBittorrent_5.3.5.0_x86_64.qpkg</location>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.1/qBittorrent_5.3.5.1_x86_64.qpkg</location>
     </platform>
     <platform>
       <platformID>TVS-873</platformID>
-      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.0/qBittorrent_5.3.5.0_x86_64.qpkg</location>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.1/qBittorrent_5.3.5.1_x86_64.qpkg</location>
     </platform>
     <platform>
       <platformID>TVS-873e</platformID>
-      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.0/qBittorrent_5.3.5.0_x86_64.qpkg</location>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.1/qBittorrent_5.3.5.1_x86_64.qpkg</location>
     </platform>
     <platform>
       <platformID>TS-X28A</platformID>
-      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.0/qBittorrent_5.3.5.0_arm_64.qpkg</location>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.1/qBittorrent_5.3.5.1_arm_64.qpkg</location>
     </platform>
     <platform>
       <platformID>TS-XA28A</platformID>
-      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.0/qBittorrent_5.3.5.0_arm_64.qpkg</location>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.1/qBittorrent_5.3.5.1_arm_64.qpkg</location>
     </platform>
     <platform>
       <platformID>TS-X32</platformID>
-      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.0/qBittorrent_5.3.5.0_arm_64.qpkg</location>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.1/qBittorrent_5.3.5.1_arm_64.qpkg</location>
     </platform>
     <platform>
       <platformID>TS-X32U</platformID>
-      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.0/qBittorrent_5.3.5.0_arm_64.qpkg</location>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.1/qBittorrent_5.3.5.1_arm_64.qpkg</location>
     </platform>
     <platform>
       <platformID>TS-X33</platformID>
-      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.0/qBittorrent_5.3.5.0_arm_64.qpkg</location>
+      <location>https://github.com/Kill3rbee67/qbittorrent-qnap/releases/download/v5.3.5.1/qBittorrent_5.3.5.1_arm_64.qpkg</location>
     </platform>
     <snapshot>https://raw.githubusercontent.com/Kill3rbee67/qbittorrent-qnap/main/docs/captures/explorateur.png</snapshot>
     <tutorialLink>https://github.com/Kill3rbee67/qbittorrent-qnap#readme</tutorialLink>
