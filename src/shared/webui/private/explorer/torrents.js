@@ -102,8 +102,11 @@ function updateTitle() {
    Le pourcentage est écrit deux fois : sur le fond de la barre (--prog-text) et, découpé
    à la largeur remplie, sur le remplissage (--on-st-*), pour rester lisible sur tous les thèmes. */
 function progHTML(pct, cls = '') {
-  const t = `${pct.toLocaleString('fr-FR')} %`;
-  return `<div class="prog ${cls}"><b>${t}</b><i style="width:${pct}%"><b aria-hidden="true">${t}</b></i></div>`;
+  const t = `${pct.toLocaleString('fr-FR')} %`, n = Math.round(pct / 10);
+  // --p : avancement de 0 à 1 (barres de largeur réduite des thèmes) ; .pchars : barre en
+  // caractères du thème Terminal, masquée ailleurs
+  return `<div class="prog ${cls}" style="--p:${pct / 100}"><b>${t}</b><i style="width:${pct}%"><b aria-hidden="true">${t}</b></i>`
+    + `<s class="pchars" aria-hidden="true">[${'#'.repeat(n)}${'.'.repeat(10 - n)}]</s></div>`;
 }
 
 /* ---------- Colonnes de la liste des torrents ---------- */
@@ -203,11 +206,24 @@ function resetColPrefs() {
   colPrefs = null;
 }
 // Colonnes affichées, dans l'ordre (Nom toujours en premier)
+// Thème Signal : liste en cartes (Nom, barre, état, taille, vitesses, temps restant), qui
+// ont donc toujours leurs cellules ; les autres colonnes choisies restent pour le tableau.
+const CARD_COLS = ['name', 'progress', 'state', 'size', 'dlspeed', 'upspeed', 'eta'];
+const cardMode = () => document.documentElement.getAttribute('data-theme') === 'signal';
 function shownCols() {
   const p = cp();
-  const ks = ['name', ...p.order.filter((k) => p.show.has(k))];
-  return (phoneCols.matches ? ks.filter((k) => k === 'name' || k === 'progress') : ks).map((k) => COLMAP[k]);
+  let ks = ['name', ...p.order.filter((k) => p.show.has(k))];
+  if (cardMode()) ks = [...ks, ...CARD_COLS.filter((k) => !ks.includes(k))];
+  else if (phoneCols.matches) ks = ks.filter((k) => k === 'name' || k === 'progress');
+  return ks.map((k) => COLMAP[k]);
 }
+// Changement de thème : la liste n'est reconstruite que si les cellules nécessaires changent
+// (passage aux cartes de Signal avec des colonnes masquées) ; sinon seul data-theme change.
+new MutationObserver(() => {
+  if (state.view !== 'torrents') return;
+  const have = [...document.querySelectorAll('#content table.tl col[data-col]')].map((c) => c.dataset.col).join();
+  if (have !== shownCols().map((c) => c.k).join()) renderTorrentsView();
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 const colW = (k) => cp().w[k] ?? COLMAP[k].w;
 
 /* Tri */
@@ -238,8 +254,9 @@ function torrentHeadHTML(cols) {
 }
 function torrentRowHTML(t, cols) {
   const sel = state.sel.has(t.hash);
-  return `<tr class="${sel ? 'sel' : ''}${t.hash === det.hash ? ' focus' : ''}" data-hash="${t.hash}"><td class="ck"><input type="checkbox" ${sel ? 'checked' : ''} aria-label="Sélectionner"></td>${
-    cols.map((c) => `<td class="${c.num ? 'num' : ''}${c.k === 'name' ? 'cname' : ''}">${c.cell(t)}</td>`).join('')}</tr>`;
+  // data-st (famille d'état) et data-k (colonne) : utilisés par les thèmes (liseré, cartes)
+  return `<tr class="${sel ? 'sel' : ''}${t.hash === det.hash ? ' focus' : ''}" data-hash="${t.hash}" data-st="${(ST[t.state] || [0, 'wait'])[1]}"><td class="ck"><input type="checkbox" ${sel ? 'checked' : ''} aria-label="Sélectionner"></td>${
+    cols.map((c) => `<td class="${c.num ? 'num' : ''}${c.k === 'name' ? 'cname' : ''}" data-k="${c.k}">${c.cell(t)}</td>`).join('')}</tr>`;
 }
 // Largeurs : celles choisies, sinon celles par défaut ; tant que l'utilisateur ne l'a pas
 // réglée, la colonne Nom prend la place restante (jamais moins de NAME_MIN).

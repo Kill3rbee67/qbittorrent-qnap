@@ -37,6 +37,8 @@ Le menu **Thème** (entre Outils et Aide) change l'apparence de l'interface expl
 
 Le choix s'applique aussitôt, sans recharger la page, et il est mémorisé par le navigateur : chaque navigateur, et chaque adresse (`http://NAS:8085` ou `/qbittorrent/`), garde le sien. L'interface classique de qBittorrent (« ⇄ Interface classique ») n'est pas concernée.
 
+Certains thèmes changent aussi la présentation, jamais les données ni les actions : **Signal** affiche les torrents en cartes, **Papier** et **Signal** les états en pastilles, **Futur** des barres segmentées et des jauges de vitesse, **Terminal** des états [DL] [UP] [OK] et des barres en caractères. Dans les menus, une touche ouvre chaque entrée (affichée entre crochets par le thème Terminal).
+
 Tous les thèmes respectent un contraste d'au moins 4,5:1 pour le texte. Les polices sont incluses dans le paquet : aucune n'est téléchargée depuis Internet, et le navigateur ne charge que celles du thème choisi.
 
 ## Compatibilité

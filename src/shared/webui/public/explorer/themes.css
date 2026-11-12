@@ -293,12 +293,156 @@ html { color-scheme: var(--scheme); }
   --danger: #FF8A6B; --ok: #E0A52E; --warn: #E0A52E;
   --header-bg: #0D0A06; --header-text: #FFB000;
   --menu-bg: #120E08; --menu-text: #FFB000; --disabled: #B8892E;
-  --row-hover: #1E1609; --row-selected: #3A2A08; --progress-track: #2A1F0C;
+  --row-hover: #1A1308; --row-selected: #2E2207; --progress-track: #2A1F0C;
   --th-text: #E0A52E;
-  --st-dl: #FFB000; --st-seed: #E0A52E; --st-done: #B8892E; --st-stop: #9C7A34; --st-err: #FF8A6B;
+  --st-dl: #FFB000; --st-seed: #E0A52E; --st-done: #C9993A; --st-stop: #B48D44; --st-err: #FF8A6B;
   --on-st-dl: #0D0A06; --on-st-done: #0D0A06; --on-st-stop: #0D0A06; --on-st-err: #0D0A06;
   --toast-bg: #FFB000; --toast-text: #0D0A06;
   --font-ui: "JetBrains Mono", ui-monospace, monospace; --font-num: var(--font-ui); --font-mono: var(--font-ui);
   --radius-sm: 0; --radius: 0; --radius-pill: 0;
   --shadow: 0 0 0 1px #5A4416;
 }
+
+/* 4. Éléments propres à certains thèmes : présentation seulement (mêmes données, même logique) */
+
+/* Pastilles d'état (Papier, Signal) : fond, texte et bordure par famille d'état */
+:root[data-theme="papier"], :root[data-theme="signal"] {
+  --pill-border: transparent;
+}
+:root[data-theme="papier"] {
+  --pill-dl-bg: #FFEDD5; --pill-dl-text: #7C2D12;
+  --pill-up-bg: #DCFCE7; --pill-up-text: #14532D;
+  --pill-done-bg: #EFE9E1; --pill-done-text: #4A3F35;
+  --pill-stop-bg: #F3EEE7; --pill-stop-text: #5C5046;
+  --pill-wait-bg: #FEF3C7; --pill-wait-text: #78350F;
+  --pill-err-bg: #FFE4E6; --pill-err-text: #881337;
+  --bar-h: 10px; --bar-r: 999px;
+}
+:root[data-theme="signal"] {
+  --pill-dl-bg: #C6F432; --pill-dl-text: #0A0A0A;
+  --pill-up-bg: #0A0A0A; --pill-up-text: #C6F432;
+  --pill-done-bg: #ECECE8; --pill-done-text: #111111;
+  --pill-stop-bg: #FFFFFF; --pill-stop-text: #111111; --pill-stop-border: #111111;
+  --pill-wait-bg: #FFE58A; --pill-wait-text: #111111;
+  --pill-err-bg: #FF5A4D; --pill-err-text: #0A0A0A;
+  /* liseré de 6 px à gauche de chaque ligne, selon l'état */
+  --lis-dl: #C6F432; --lis-up: #0A0A0A; --lis-done: #BDBDB7; --lis-stop: #D4D4CF; --lis-wait: #E8C547; --lis-err: #FF5A4D;
+}
+:is(:root[data-theme="papier"], :root[data-theme="signal"]) .st {
+  display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; vertical-align:middle;
+  padding:1px 9px; border-radius:var(--radius-pill); font-size:12px; font-weight:600; line-height:18px;
+  background:var(--pill-bg); color:var(--pill-text); border:1px solid var(--pill-border);
+}
+:is(:root[data-theme="papier"], :root[data-theme="signal"]) .st::before { display:none; }
+:is(:root[data-theme="papier"], :root[data-theme="signal"]) .st.dl { --pill-bg:var(--pill-dl-bg); --pill-text:var(--pill-dl-text); }
+:is(:root[data-theme="papier"], :root[data-theme="signal"]) .st.up { --pill-bg:var(--pill-up-bg); --pill-text:var(--pill-up-text); }
+:is(:root[data-theme="papier"], :root[data-theme="signal"]) .st.done { --pill-bg:var(--pill-done-bg); --pill-text:var(--pill-done-text); }
+:is(:root[data-theme="papier"], :root[data-theme="signal"]) .st.stop { --pill-bg:var(--pill-stop-bg); --pill-text:var(--pill-stop-text); --pill-border:var(--pill-stop-border, transparent); }
+:is(:root[data-theme="papier"], :root[data-theme="signal"]) .st.wait { --pill-bg:var(--pill-wait-bg); --pill-text:var(--pill-wait-text); }
+:is(:root[data-theme="papier"], :root[data-theme="signal"]) .st.err { --pill-bg:var(--pill-err-bg); --pill-text:var(--pill-err-text); }
+:root[data-theme="signal"] .tl tbody tr[data-st] > td.ck { box-shadow:inset 6px 0 0 var(--lis); }
+:root[data-theme="signal"] tr[data-st="dl"] { --lis:var(--lis-dl); } :root[data-theme="signal"] tr[data-st="up"] { --lis:var(--lis-up); }
+:root[data-theme="signal"] tr[data-st="done"] { --lis:var(--lis-done); } :root[data-theme="signal"] tr[data-st="stop"] { --lis:var(--lis-stop); }
+:root[data-theme="signal"] tr[data-st="wait"] { --lis:var(--lis-wait); } :root[data-theme="signal"] tr[data-st="err"] { --lis:var(--lis-err); }
+
+/* Barre fine à côté du pourcentage (Papier 10 px arrondie, Minimal 2 px, Futur segmentée) */
+:root[data-theme="minimal"] { --bar-h: 2px; --bar-r: 0; }
+:root[data-theme="futur"] { --bar-h: 6px; --bar-r: 0; }
+:is(:root[data-theme="papier"], :root[data-theme="minimal"], :root[data-theme="futur"]) .prog { background:none; overflow:visible; border-radius:0; }
+:is(:root[data-theme="papier"], :root[data-theme="minimal"], :root[data-theme="futur"]) .prog::before {
+  content:""; position:absolute; left:0; right:46px; top:50%; height:var(--bar-h); transform:translateY(-50%);
+  background:var(--progress-track); border-radius:var(--bar-r);
+}
+:is(:root[data-theme="papier"], :root[data-theme="minimal"], :root[data-theme="futur"]) .prog i {
+  top:50%; bottom:auto; height:var(--bar-h); transform:translateY(-50%); border-radius:var(--bar-r);
+  width:calc((100% - 46px) * var(--p)) !important;
+}
+:is(:root[data-theme="papier"], :root[data-theme="minimal"], :root[data-theme="futur"]) .prog i b { display:none; }
+:is(:root[data-theme="papier"], :root[data-theme="minimal"], :root[data-theme="futur"]) .prog > b { text-align:right; color:var(--prog-text); }
+:root[data-theme="futur"] .prog::before { background:repeating-linear-gradient(90deg, var(--progress-track) 0 5px, transparent 5px 7px); }
+:root[data-theme="futur"] .prog i { background:repeating-linear-gradient(90deg, var(--st-dl) 0 5px, transparent 5px 7px); }
+:root[data-theme="futur"] .prog.done i { background:repeating-linear-gradient(90deg, var(--st-done) 0 5px, transparent 5px 7px); }
+:root[data-theme="futur"] .prog.stop i { background:repeating-linear-gradient(90deg, var(--st-stop) 0 5px, transparent 5px 7px); }
+:root[data-theme="futur"] .prog.err i { background:repeating-linear-gradient(90deg, var(--st-err) 0 5px, transparent 5px 7px); }
+
+/* Minimal : pas d'encadrés ni d'ombres, filets de 1 px */
+:root[data-theme="minimal"] { --shadow: 0 0 0 1px #E4E4E7; --shadow-dlg: 0 0 0 1px #E4E4E7; --shadow-toast: none; --shadow-side: 1px 0 0 #E4E4E7; }
+:root[data-theme="minimal"] :is(.btn, .tbtn, .seg) { border-color:var(--border); }
+:root[data-theme="minimal"] .tag { background:none; }
+:root[data-theme="minimal"] :is(.hint, .dest) { background:none; }
+
+/* Futur : coins coupés, titres en majuscules espacées, jauges de vitesse */
+:root[data-theme="futur"] { --cut: 12px; --cut-sm: 6px; }
+:root[data-theme="futur"] :is(.dlg, .card) {
+  clip-path:polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+:root[data-theme="futur"] .menu { clip-path:polygon(0 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm), 100% 100%, var(--cut-sm) 100%, 0 calc(100% - var(--cut-sm))); }
+:root[data-theme="futur"] :is(.btn.primary, .card button) {
+  clip-path:polygon(var(--cut-sm) 0, 100% 0, 100% calc(100% - var(--cut-sm)), calc(100% - var(--cut-sm)) 100%, 0 100%, 0 var(--cut-sm));
+}
+:root[data-theme="futur"] :is(.sec, .dlg h2, .settings h3, .settings h4, .menu .mh, .dtabs button.tab, .tl th, .head h1) { text-transform:uppercase; letter-spacing:.14em; }
+:root[data-theme="futur"] .speeds { align-items:center; gap:8px; }
+:root[data-theme="futur"] .gauge { display:block; }
+:root[data-theme="futur"] #spd-dl { margin-right:8px; }
+
+/* Terminal : états [DL] [UP] [OK] [--] [!!], filets en pointillés, barre en caractères,
+   cases et raccourcis des menus entre crochets */
+:root[data-theme="terminal"] .st::before { content:"[--]"; width:auto; height:auto; border-radius:0; background:none; color:var(--st-stop); font-weight:700; }
+:root[data-theme="terminal"] .st.dl::before { content:"[DL]"; color:var(--st-dl); }
+:root[data-theme="terminal"] .st.up::before { content:"[UP]"; color:var(--st-seed); }
+:root[data-theme="terminal"] .st.done::before { content:"[OK]"; color:var(--st-done); }
+:root[data-theme="terminal"] .st.wait::before { content:"[--]"; color:var(--st-wait); }
+:root[data-theme="terminal"] .st.err::before { content:"[!!]"; color:var(--st-err); }
+:root:root[data-theme="terminal"] :is(.menu, .btn, .tbtn, .field, .search, .crumbs, .seg, .card, input:not([type="checkbox"], [type="radio"]), textarea, .addlist, .hint, .dest, .tag, .nav .cnt) { border-style:dashed; }
+:root[data-theme="terminal"] :is(.toolbar, .pathbar, .dtabs, .dlg h2, td, th, .addlist li) { border-bottom-style:dashed; }
+:root[data-theme="terminal"] :is(.statusbar, .details, .dlg .foot, .menu hr) { border-top-style:dashed; }
+:root[data-theme="terminal"] :is(.side, .settings nav, .tl .cname) { border-right-style:dashed; }
+:root[data-theme="terminal"] .prog { background:none; overflow:visible; }
+:root[data-theme="terminal"] .prog > :is(b, i) { display:none; }
+:root[data-theme="terminal"] .pchars { display:block; text-decoration:none; text-align:left; font-size:12px; line-height:16px; white-space:pre; color:var(--text); }
+:root[data-theme="terminal"] .prog.done .pchars { color:var(--st-done); }
+:root[data-theme="terminal"] .prog.err .pchars { color:var(--st-err); }
+:root[data-theme="terminal"] .menu button[data-key]::after { content:"[" attr(data-key) "]"; order:1; margin-left:auto; padding-left:16px; color:var(--muted); }
+:root[data-theme="terminal"] .menu button[data-key] :is(.sub, .swatch) { order:2; margin-left:0; }
+:root[data-theme="terminal"] .menu button[data-key]:disabled::after { color:var(--disabled); }
+:root[data-theme="terminal"] .menu [aria-checked] .mi { width:auto; min-width:26px; font-size:0; }
+:root[data-theme="terminal"] .menu [aria-checked] .mi::before { font-size:13px; content:"[ ]"; }
+:root[data-theme="terminal"] .menu [aria-checked="true"] .mi::before { content:"[x]"; }
+:root[data-theme="terminal"] .menu [role="menuitemradio"] .mi::before { content:"( )"; }
+:root[data-theme="terminal"] .menu [role="menuitemradio"][aria-checked="true"] .mi::before { content:"(*)"; }
+:root[data-theme="terminal"] .menu .sub { font-size:0; }
+:root[data-theme="terminal"] .menu .sub::after { font-size:13px; content:">"; }
+
+/* Signal : liste des torrents en cartes (Nom, barre, état, taille, vitesses, temps restant).
+   Les en-têtes deviennent une rangée de boutons de tri ; les autres thèmes gardent le tableau. */
+:root[data-theme="signal"] #content table.tl { display:block; width:auto !important; }
+:root[data-theme="signal"] .tl colgroup { display:none; }
+:root[data-theme="signal"] .tl thead { display:block; position:sticky; top:0; z-index:4; background:var(--bg); border-bottom:1px solid var(--border); }
+:root[data-theme="signal"] .tl thead tr { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px 12px; }
+:root[data-theme="signal"] .tl th { position:static; display:inline-flex; align-items:center; width:auto; border:1px solid var(--border); border-radius:var(--radius-pill); background:var(--panel); padding:3px 10px; }
+:root[data-theme="signal"] .tl th.ck { border:0; background:none; padding:0 4px 0 0; }
+:root[data-theme="signal"] .tl th[data-col]:not([data-col="name"], [data-col="progress"], [data-col="state"], [data-col="size"], [data-col="dlspeed"], [data-col="upspeed"], [data-col="eta"]) { display:none; }
+:root[data-theme="signal"] .tl th .rz { display:none; }
+:root[data-theme="signal"] .tl tbody { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap:10px; padding:12px; }
+:root[data-theme="signal"] .tl tbody tr {
+  display:grid; grid-template-columns:24px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap:6px 10px; align-items:center;
+  grid-template-areas: "ck name name name" ". prog prog prog" ". st st size" ". dl up eta";
+  padding:10px 12px 10px 10px; background:var(--panel); border:1px solid var(--border); border-left:6px solid var(--lis, var(--border)); border-radius:var(--radius-md);
+}
+:root[data-theme="signal"] .tl tbody tr:hover { background:var(--row-hover); }
+:root[data-theme="signal"] .tl tbody tr.sel { background:var(--row-selected); border-color:var(--text); border-left-color:var(--lis, var(--text)); }
+:root[data-theme="signal"] .tl tbody td { display:block; position:static; padding:0; border:0; background:transparent !important; box-shadow:none !important; min-width:0; }
+:root[data-theme="signal"] .tl tbody td:not(.ck, [data-k="name"], [data-k="progress"], [data-k="state"], [data-k="size"], [data-k="dlspeed"], [data-k="upspeed"], [data-k="eta"]) { display:none; }
+:root[data-theme="signal"] .tl td.ck { grid-area:ck; }
+:root[data-theme="signal"] .tl td[data-k="name"] { grid-area:name; font-weight:600; }
+:root[data-theme="signal"] .tl td[data-k="progress"] { grid-area:prog; }
+:root[data-theme="signal"] .tl td[data-k="state"] { grid-area:st; }
+:root[data-theme="signal"] .tl td[data-k="size"] { grid-area:size; }
+:root[data-theme="signal"] .tl td[data-k="dlspeed"] { grid-area:dl; text-align:left; }
+:root[data-theme="signal"] .tl td[data-k="upspeed"] { grid-area:up; text-align:left; }
+:root[data-theme="signal"] .tl td[data-k="eta"] { grid-area:eta; }
+:root[data-theme="signal"] .tl td[data-k="dlspeed"]::before { content:"↓ "; color:var(--muted); }
+:root[data-theme="signal"] .tl td[data-k="upspeed"]::before { content:"↑ "; color:var(--muted); }
+:root[data-theme="signal"] .tl td[data-k="eta"]::before { content:"Reste "; color:var(--muted); }
+:root[data-theme="signal"] .tl tbody tr:has(td.emptycell) { display:block; grid-column:1 / -1; border:0; background:none; padding:0; }
+:root[data-theme="signal"] .tl td.emptycell .empty { position:static; width:auto; }

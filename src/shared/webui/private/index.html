@@ -229,6 +229,13 @@ window.addEventListener('storage', function (e) { if (e.key === 'qbfs.theme') ap
   .menu .mh { padding:8px 14px 3px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
   .menu button .sub { margin-left:auto; padding-left:18px; color:var(--menu-icon); }
   .menu button.open { background:var(--menu-hover); }
+  .pchars { display:none; }
+  .gauge { display:none; }
+  .gauge svg { display:block; }
+  .gauge circle { fill:none; stroke-width:4; }
+  .gauge .gt { stroke:var(--progress-track); }
+  .gauge .gv { stroke:var(--accent); transform:rotate(-90deg); transform-origin:50% 50%; transition:stroke-dasharray .4s; }
+  #g-up .gv { stroke:var(--accent-2, var(--accent)); }
   .menu .swatch { margin-left:auto; padding-left:16px; display:flex; gap:6px; }
   .menu .swatch > span { display:flex; border:1px solid var(--border); }
   .menu .swatch i { width:10px; height:14px; }
@@ -302,7 +309,7 @@ window.addEventListener('storage', function (e) { if (e.key === 'qbfs.theme') ap
   </div>
   <nav class="menubar" id="menubar" aria-label="Menus"></nav>
   <div class="grow"></div>
-  <div class="speeds" id="speeds" title="Limites de vitesse globales" style="cursor:pointer"><span id="spd-dl">↓ —</span><span id="spd-up">↑ —</span></div>
+  <div class="speeds" id="speeds" title="Limites de vitesse globales" style="cursor:pointer"><span class="gauge" id="g-dl" aria-hidden="true"></span><span id="spd-dl">↓ —</span><span class="gauge" id="g-up" aria-hidden="true"></span><span id="spd-up">↑ —</span></div>
   <button class="tbtn hide-sm" id="classic" title="Ouvrir l'interface d'origine de qBittorrent">⇄ Interface classique</button>
   <button class="tbtn" id="logout">Déconnexion</button>
 </header>
@@ -1178,16 +1185,31 @@ function menus() {
     ['Aide', [['about', 'À propos…'], ['guide', 'Guide d\'utilisation'], ['issue', 'Signaler un problème']]],
   ];
 }
+// Raccourci de chaque entrée : la première lettre libre de son libellé, sinon un chiffre
+function menuKeys(items) {
+  const used = new Set(), keys = new Map();
+  for (const it of items) {
+    if (!Array.isArray(it) || it[0] === '#') continue;
+    const letters = it[1].normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    // à défaut, un chiffre libre (menus longs dont les libellés partagent leurs lettres)
+    const k = [...letters].find((c) => !used.has(c)) || [...'123456789'].find((c) => !used.has(c));
+    if (k) { used.add(k); keys.set(it, k); }
+  }
+  return keys;
+}
 function menuHTML(items) {
+  const keys = menuKeys(items);
   return items.map((it) => {
     if (it === '-') return '<hr>';
     if (it[0] === '#') return `<div class="mh">${esc(it[1])}</div>`;
     const [act, label, icon, disabled, checked, sub, extra] = it; // extra : HTML ajouté après le libellé (aperçu)
     const mark = checked !== undefined && checked !== null ? (checked ? '✓' : '') : (icon || '');
-    if (sub) return `<button role="menuitem" aria-haspopup="menu" data-msub="${esc(act)}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}<span class="sub">›</span></button>`;
+    // Raccourci : attribut seulement (le thème Terminal l'affiche entre crochets par CSS)
+    const k = keys.get(it), acc = k ? ` data-key="${k}" aria-keyshortcuts="${k}"` : '';
+    if (sub) return `<button role="menuitem" aria-haspopup="menu" data-msub="${esc(act)}"${acc} ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}<span class="sub">›</span></button>`;
     const isCk = checked !== undefined && checked !== null;
     const role = isCk ? (act.startsWith('theme:') ? 'menuitemradio' : 'menuitemcheckbox') : 'menuitem';
-    return `<button role="${role}"${isCk ? ` aria-checked="${checked ? 'true' : 'false'}"` : ''} data-mact="${esc(act)}" ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}${extra || ''}</button>`;
+    return `<button role="${role}"${isCk ? ` aria-checked="${checked ? 'true' : 'false'}"` : ''} data-mact="${esc(act)}"${acc} ${disabled ? 'disabled' : ''}><span class="mi">${mark}</span>${esc(label)}${extra || ''}</button>`;
   }).join('');
 }
 let openMenu = null;
@@ -1372,6 +1394,14 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault(); openSub(cur); openMenu.subEl?.querySelector('button:not(:disabled)')?.focus(); return;
   }
   if (e.key === 'ArrowLeft' && inSub) { e.preventDefault(); const b = openMenu.subBtn; closeSub(); b.focus(); return; }
+  // Lettre de raccourci (affichée entre crochets par le thème Terminal)
+  if (e.key.length === 1 && /[a-z0-9]/i.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const b = m.querySelector(`:scope > button[data-key="${e.key.toUpperCase()}"]:not(:disabled)`);
+    if (!b) return;
+    e.preventDefault();
+    if (b.dataset.msub) { openSub(b); openMenu.subEl?.querySelector('button:not(:disabled)')?.focus(); } else b.click();
+    return;
+  }
   if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
   const items = [...m.querySelectorAll(':scope > button:not(:disabled)')];
   if (!items.length) return;
@@ -2011,6 +2041,7 @@ async function poll() {
     const tr = await syncMain();
     $('#spd-dl').textContent = '↓ ' + fmtSpeed(tr.dl_info_speed);
     $('#spd-up').textContent = '↑ ' + fmtSpeed(tr.up_info_speed);
+    updateGauges(tr);
     state.conn = tr;
     updateTitle();
     if (!state.freeAt || Date.now() - state.freeAt > 30000) { state.freeAt = Date.now(); freeSpace(state.defaultPath).then((f) => { state.free = f; }); }

@@ -59,6 +59,20 @@ Avant de commencer : sauvegardez le profil (voir README, « Mise à jour et migr
 | 2t.9 | Sur téléphone : « Menu ▾ » › un thème. | Thème appliqué, pas de défilement horizontal, menu entièrement visible. |
 | 2t.10 | Par myQNAPcloud Link : choisir un thème. | Mêmes résultats (chaque adresse garde son propre choix). |
 
+## 2 quater. Présentation propre à certains thèmes (QTS)
+
+| # | Action | Résultat attendu |
+|---|---|---|
+| 2q.1 | Thème Signal. | Torrents en cartes : nom, barre, état en pastille, taille, ↓, ↑, temps restant ; liseré coloré à gauche selon l'état. |
+| 2q.2 | Signal : cliquer sur « Taille » dans la rangée d'en-têtes, cocher deux cartes, clic droit sur une carte. | Tri, sélection et menu Édition fonctionnent comme dans le tableau. |
+| 2q.3 | Signal sur téléphone. | Une carte par ligne, pas de défilement horizontal. |
+| 2q.4 | Masquer la colonne Taille (en Ardoise), passer en Signal puis revenir. | La carte montre la taille ; de retour au tableau, la colonne reste masquée. |
+| 2q.5 | Thème Papier. | États en pastilles, barre fine arrondie avec le pourcentage à droite, boutons en pilule. |
+| 2q.6 | Thème Futur, avec un téléchargement actif. | Barres segmentées ; deux jauges circulaires près des vitesses en haut, qui bougent avec la vitesse ; fenêtres et menus aux coins coupés. |
+| 2q.7 | Thème Terminal. | États [DL] [UP] [OK] [--] [!!], barres [#####.....], pointillés, [x] / (*) et raccourcis [D] [A]… dans les menus. |
+| 2q.8 | Terminal : ouvrir Affichage, appuyer sur la lettre affichée devant « Journal… ». | Le journal s'ouvre. |
+| 2q.9 | Thème Minimal. | Barre de progression de 2 px, menus sans ombre. |
+
 ## 3. Panneau de détails (QTS)
 
 | # | Action | Résultat attendu |
