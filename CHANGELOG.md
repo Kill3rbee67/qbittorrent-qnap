@@ -2,6 +2,19 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.7.0
+Ajouté
+- Thème **Signal** : liste des torrents en cartes (nom, barre, état, taille, vitesses, temps restant), liseré de 6 px à gauche selon l'état, états en pastilles ; les en-têtes deviennent des boutons de tri. Les autres thèmes gardent le tableau et ses colonnes réglables.
+- Thème **Papier** : états en pastilles (fond pastel, texte foncé), barre de progression de 10 px arrondie à côté du pourcentage.
+- Thème **Futur** : barres de progression segmentées, coins coupés des fenêtres, menus et boutons, titres en majuscules espacées, jauges circulaires de réception et d'envoi dans la barre du haut (vitesse rapportée à la limite globale, ou au pic récent sans limite).
+- Thème **Terminal** : états affichés [DL] [UP] [OK] [--] [!!], barre de progression en caractères ([#####.....]), filets en pointillés, cases des menus [x] / (*), raccourcis entre crochets.
+- Thème **Minimal** : barre de progression de 2 px, menus et fenêtres sans ombre portée (filet de 1 px).
+- Menus : chaque entrée a une touche de raccourci (première lettre libre de son libellé, sinon un chiffre) : menu ouvert, la touche active l'entrée, dans tous les thèmes.
+
+Modifié
+- Terminal : couleurs des états « terminé » et « arrêté » et fond des lignes sélectionnées ajustés pour rester lisibles (4,5:1) en texte.
+- `tests/interface-check.py` contrôle aussi les pastilles de Papier et de Signal et les codes d'état du Terminal.
+
 ## 5.3.6.0
 Ajouté
 - Menu **Thème** (entre Outils et Aide) : Classique (apparence d'origine, par défaut), Ardoise, Papier, Signal, Minimal, Futur, Terminal, avec un aperçu des couleurs de chacun et une coche sur le thème actif ; **Automatique** suit le réglage clair / sombre du système (Papier ou Ardoise), en direct. Utilisable au clavier.

@@ -174,3 +174,19 @@ function shutdownDialog() {
       document.body.innerHTML = `<div class="empty" style="height:100vh"><strong>qBittorrent est arrêté</strong><span>Relancez-le depuis l'App Center de QTS, puis rechargez cette page.</span></div>`;
     } });
 }
+
+/* ---------- Jauges de vitesse (thème Futur) ----------
+   Réception et envoi dans la barre du haut : vitesse rapportée à la limite globale, ou,
+   sans limite, au pic récent. Masquées dans les autres thèmes (CSS). */
+const gaugePeak = { dl: 1, up: 1 };
+function updateGauges(s) {
+  for (const [k, sp, lim, lbl] of [['dl', s.dl_info_speed, s.dl_rate_limit, 'Réception'], ['up', s.up_info_speed, s.up_rate_limit, 'Envoi']]) {
+    const g = document.getElementById('g-' + k);
+    if (!g) continue;
+    if (!g.firstChild) g.innerHTML = '<svg width="22" height="22" viewBox="0 0 36 36"><circle class="gt" cx="18" cy="18" r="15" pathLength="100"/><circle class="gv" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="0 100"/></svg>';
+    gaugePeak[k] = Math.max(gaugePeak[k] * 0.98, sp || 0, 1);
+    const max = lim > 0 ? lim : gaugePeak[k], pct = Math.min(100, (sp || 0) / max * 100);
+    g.querySelector('.gv').setAttribute('stroke-dasharray', `${pct.toFixed(1)} 100`);
+    g.title = `${lbl} : ${fmtSpeed(sp)}${lim > 0 ? ` sur ${fmtSize(lim)}/s (limite)` : ''}`;
+  }
+}

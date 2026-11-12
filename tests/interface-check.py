@@ -82,13 +82,18 @@ for sel, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css):
     if decls:
         blocks.append((' '.join(sel.split()), decls))
 
+THEME_SEL = re.compile(r'^(?::root|:root:not\(\[data-theme\]\)|\[data-theme="[\w-]+"\]|:root\[data-theme="[\w-]+"\])$')
 def theme_vars(t):
+    # Seuls les blocs de variables d'un thème (sélecteur fait uniquement de :root /
+    # [data-theme="…"]) ; les règles de présentation (« [data-theme] .st.dl ») sont ignorées
     v = {}
-    for sel, d in blocks:
+    own = [(sel, d) for sel, d in blocks if all(THEME_SEL.match(x.strip()) for x in sel.split(','))]
+    for sel, d in own:
         if sel == ':root':
             v.update(d)
-    for sel, d in blocks:
-        if t == 'classique' and ':root:not([data-theme])' in sel or f'[data-theme="{t}"]' in sel and ':not(' not in sel:
+    for sel, d in own:
+        parts = [x.strip() for x in sel.split(',')]
+        if t == 'classique' and ':root:not([data-theme])' in parts or f'[data-theme="{t}"]' in parts or f':root[data-theme="{t}"]' in parts:
             v.update(d)
     return v
 
@@ -250,11 +255,21 @@ def color_of(v, spec):
         c = over(c, parse_color(resolve(v, 'var(--panel)')))
     return c
 
+# Couples propres à certains thèmes (lot 4) : pastilles d'état, codes [DL]…, barre en caractères
+STATES = ('dl', 'up', 'done', 'stop', 'wait', 'err')
+EXTRA = {
+    'papier': [(f'--pill-{k}-text', f'--pill-{k}-bg', f'pastille d\'état « {k} »') for k in STATES],
+    'signal': [(f'--pill-{k}-text', f'--pill-{k}-bg', f'pastille d\'état « {k} »') for k in STATES],
+    'terminal': [(f'--st-{k}', bg, f'code d\'état [{k}] ({w})') for k in ('dl', 'seed', 'done', 'stop', 'wait', 'err')
+                 for bg, w in (('--panel', 'ligne'), ('--row-hover', 'ligne survolée'), ('--row-selected', 'ligne sélectionnée'))],
+    'futur': [('--prog-text', '--row-selected', 'pourcentage à côté de la barre, ligne sélectionnée')],
+}
 for t in THEMES:
     v = theme_vars(t)
+    pairs = TEXT_PAIRS + EXTRA.get(t, [])
     bad, classic_low = [], []
     worst = (99, '')
-    for fg, bg, where in TEXT_PAIRS:
+    for fg, bg, where in pairs:
         try:
             r = ratio(color_of(v, fg), color_of(v, bg))
         except ValueError as e:
@@ -273,7 +288,7 @@ for t in THEMES:
     for b in bad:
         fail(f'thème {t} : contraste insuffisant — {b}')
     if not bad:
-        print(f'OK  thème {t} : {len(TEXT_PAIRS) - len(classic_low)} couples texte / fond ≥ 4,5:1 (le plus faible : {worst[1]}, {worst[0]:.2f}:1)')
+        print(f'OK  thème {t} : {len(pairs) - len(classic_low)} couples texte / fond ≥ 4,5:1 (le plus faible : {worst[1]}, {worst[0]:.2f}:1)')
     if classic_low:
         print(f'    Classique (apparence d\'origine conservée), sous 4,5:1 : ' + ' ; '.join(classic_low))
     low = [f'{w} {ratio(color_of(v, a), color_of(v, b)):.2f}:1' for a, b, w in GRAPHIC_PAIRS if ratio(color_of(v, a), color_of(v, b)) < 3]
