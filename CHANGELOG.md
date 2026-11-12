@@ -2,6 +2,10 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.7.1
+Corrigé
+- Nouvel abonnement RSS : coller l'adresse de la page de résultats d'une recherche (au lieu de celle du flux) fonctionne de nouveau. Si qBittorrent ne peut pas lire l'adresse collée, l'interface essaie la version flux RSS de la même recherche (`page=rss` ajouté à la fin, comme le faisaient les versions antérieures à la 5.3.4.0) et la garde si elle fonctionne ; l'adresse affichée est mise à jour. Les adresses de flux sont utilisées telles quelles.
+
 ## 5.3.7.0
 Ajouté
 - Thème **Signal** : liste des torrents en cartes (nom, barre, état, taille, vitesses, temps restant), liseré de 6 px à gauche selon l'état, états en pastilles ; les en-têtes deviennent des boutons de tri. Les autres thèmes gardent le tableau et ses colonnes réglables.

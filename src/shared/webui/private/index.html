@@ -838,6 +838,15 @@ function toFeedUrl(s) {
   if (!/^https?:$/.test(u.protocol)) return null;
   return u.toString();
 }
+// Adresse d'une page de résultats de recherche → version flux RSS de la même recherche,
+// selon la convention répandue « page=rss » (ajoutée à la fin, comme dans les versions
+// précédentes). null si l'adresse désigne déjà un flux.
+function rssVariant(s) {
+  let u; try { u = new URL(s); } catch (_) { return null; }
+  if (u.searchParams.get('page') === 'rss' || /rss|atom|feed|\.xml$/i.test(u.pathname) || ![...u.searchParams.keys()].length) return null;
+  u.searchParams.set('page', 'rss');
+  return u.toString();
+}
 function nameFromUrl(s) {
   try { const u = new URL(s.trim()); return (u.searchParams.get('q') || u.searchParams.get('term') || '').trim() || u.hostname; } catch (_) { return ''; }
 }
@@ -915,7 +924,7 @@ function subscribeDialog({ dest = state.defaultPath, name = null, url: preUrl = 
         }
         toast('Abonnement mis à jour'); loadRss(); return;
       }
-      const url = toFeedUrl(bd.querySelector('#rs-url').value);
+      let url = toFeedUrl(bd.querySelector('#rs-url').value);
       if (!url) { err('Collez une adresse web complète (https://…).'); return false; }
       const nm = bd.querySelector('#rs-name').value.trim() || nameFromUrl(url);
       if (!nm || /\\/.test(nm)) { err('Nom invalide (le caractère \\ est interdit).'); return false; }
@@ -923,16 +932,30 @@ function subscribeDialog({ dest = state.defaultPath, name = null, url: preUrl = 
       const old = bd.querySelector('#rs-old').checked;
       ok.textContent = 'Lecture du flux…';
       await ensureRssEnabled();
-      let feedPath = nm, created = false;
-      const add = await post('rss/addFeed', { url, path: nm });
-      if (add.ok) created = true;
-      else {
-        const existing = flattenFeeds(await api('rss/items').then((x) => x.json())).find((x) => x.url === url);
-        if (!existing) { ok.textContent = 'S\'abonner'; err('Impossible d\'ajouter ce flux : ' + (await add.text())); return false; }
-        feedPath = existing.path;
+      // Ajoute le flux et attend que qBittorrent l'ait lu
+      const readFeed = async (u) => {
+        let feedPath = nm, created = false;
+        const add = await post('rss/addFeed', { url: u, path: nm });
+        if (add.ok) created = true;
+        else {
+          const existing = flattenFeeds(await api('rss/items').then((x) => x.json())).find((x) => x.url === u);
+          if (!existing) return { addError: await add.text() };
+          feedPath = existing.path;
+        }
+        await post('rss/refreshItem', { itemPath: feedPath });
+        return { feedPath, created, ...(await waitFeed(u)) };
+      };
+      let rd = await readFeed(url);
+      // Page de résultats d'un site collée au lieu de son flux : essai de la version RSS
+      const alt = (rd.addError || !rd.feed || rd.feed.hasError) && rssVariant(url);
+      if (alt) {
+        if (rd.created) await post('rss/removeItem', { path: rd.feedPath });
+        const r2 = await readFeed(alt);
+        if (!r2.addError && r2.feed && !r2.feed.hasError) { rd = r2; url = alt; bd.querySelector('#rs-url').value = alt; }
+        else if (r2.created) await post('rss/removeItem', { path: r2.feedPath });
       }
-      await post('rss/refreshItem', { itemPath: feedPath });
-      const { feed, loaded } = await waitFeed(url);
+      if (rd.addError) { ok.textContent = 'S\'abonner'; err('Impossible d\'ajouter ce flux : ' + rd.addError); return false; }
+      const { feed, loaded, feedPath, created } = rd;
       // Flux illisible, ou pas encore lu alors qu'il faut ignorer les épisodes déjà publiés
       if (!feed || feed.hasError || (!loaded && !old)) {
         if (created) await post('rss/removeItem', { path: feedPath });

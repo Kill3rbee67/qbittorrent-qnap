@@ -115,6 +115,7 @@ Avant de commencer : sauvegardez le profil (voir README, « Mise à jour et migr
 | 6.2 | Cliquer sur un article. | Description affichée en texte ; l'article passe en lu. |
 | 6.3 | Double-cliquer sur un article. | Fenêtre d'ajout avec le lien préremplie. |
 | 6.4 | Clic droit sur le flux › Télécharger automatiquement (nouvel abonnement)…, Options avancées › catégorie + filtre d'épisode. | Abonnement créé ; les prochains épisodes arrivent avec la catégorie choisie. |
+| 6.4b | Nouvel abonnement en collant l'adresse de la page de résultats d'une recherche (pas celle du flux). | Abonnement créé ; son adresse se termine par `page=rss` et l'état du flux est « OK ». |
 | 6.5 | Modifier l'abonnement › Voir les articles correspondants. | Liste des articles qui correspondent. |
 | 6.6 | Clic droit sur le flux › Renommer, Déplacer, Modifier l'URL, puis Supprimer. | Chaque action est visible dans la liste des flux. |
 
