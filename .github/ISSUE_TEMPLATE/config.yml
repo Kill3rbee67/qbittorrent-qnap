@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Dépannage (à lire avant d'ouvrir un ticket)
+    url: https://github.com/Kill3rbee67/qbittorrent-qnap/blob/main/README.fr.md#dépannage
+    about: Interface injoignable, téléchargements bloqués, mot de passe perdu, myQNAPcloud Link.
+  - name: Faille de sécurité
+    url: https://github.com/Kill3rbee67/qbittorrent-qnap/security/advisories/new
+    about: Signalement privé, voir SECURITY.md. N'ouvrez pas de ticket public.
+  - name: Problème de qBittorrent lui-même
+    url: https://github.com/qbittorrent/qBittorrent/issues
+    about: Un problème qui se produit aussi dans l'interface classique relève en général du projet qBittorrent.

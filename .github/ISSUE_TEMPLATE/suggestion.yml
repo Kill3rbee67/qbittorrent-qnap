@@ -1,0 +1,30 @@
+name: Proposer une amélioration
+description: Une idée de fonction ou un changement dans l'interface
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci pour votre idée. Le français et l'anglais sont tous deux bienvenus.
+  - type: textarea
+    id: besoin
+    attributes:
+      label: Quel besoin cela couvrirait-il ?
+      description: Décrivez la situation concrète, plutôt que la solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposition
+    attributes:
+      label: Ce que vous proposez
+  - type: dropdown
+    id: interface
+    attributes:
+      label: Partie concernée
+      options:
+        - Interface explorateur
+        - Installation, mise à jour, App Center
+        - Accès à distance
+        - RSS, notifications
+        - Documentation
+        - Autre
