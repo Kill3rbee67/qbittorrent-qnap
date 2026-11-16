@@ -57,3 +57,16 @@ Consultés par recherche web (l'API GitHub de cette session ne donnait accès qu
 | tailscale/tailscale-qpkg | README minimal, renvoi vers la documentation officielle | non relevés |
 
 Les topics proposés dans le rapport reprennent ce vocabulaire (`qnap`, `qpkg`, `qts`, `nas`, `bittorrent`) et y ajoutent ceux du cas d'usage.
+
+## Métadonnées proposées (non appliquées)
+
+```sh
+gh repo edit Kill3rbee67/qbittorrent-qnap \
+  --description "qBittorrent as a native QPKG for QNAP NAS, with a file-browser web UI. A Download Station alternative: no Docker, no command line." \
+  --remove-topic donwload-station --remove-topic qbittorent \
+  --add-topic qbittorrent --add-topic download-station --add-topic bittorrent \
+  --add-topic torrent --add-topic torrent-client --add-topic nas --add-topic qnap-nas \
+  --add-topic qts --add-topic webui --add-topic rss --add-topic self-hosted --add-topic homelab
+```
+
+Les topics `qnap` et `qpkg` sont conservés, soit 14 au total. Pas d'URL de site à renseigner : le README sert de documentation.
