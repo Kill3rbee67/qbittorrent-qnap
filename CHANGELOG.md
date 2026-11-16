@@ -2,6 +2,11 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.8.1
+Modifié
+- Ouverture de la page plus rapide, dans tous les thèmes : la liste des torrents est demandée sans attendre la lecture des dossiers du NAS (qui se fait en même temps), et les abonnements RSS (réponse volumineuse) ne sont chargés qu'ensuite. Avant, la liste n'apparaissait qu'après ces lectures.
+- Thème Aurore : animation d'entrée de la liste raccourcie (12 lignes, moins d'une demi-seconde au lieu d'une seconde environ).
+
 ## 5.3.8.0
 Ajouté
 - Thème **Aurore** (menu Thème, après Terminal) : sombre, fond en dégradé qui dérive lentement avec un grain très léger, barre du haut, barre latérale, menus, fenêtres et page de connexion en verre dépoli, bordures qui s'éclairent près du pointeur, ombres colorées.

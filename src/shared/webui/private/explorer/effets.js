@@ -66,7 +66,7 @@
   }
 
   /* ---------- 2. Liste des torrents ---------- */
-  const STAGGER = 24; // lignes animées à l'entrée (les suivantes sont hors de l'écran ou presque)
+  const STAGGER = 12; // lignes animées à l'entrée : brève (moins d'une demi-seconde en tout), la liste ne doit pas paraître lente à s'afficher
   const SHIMMER_MAX = 40; // au-delà, le reflet des barres de progression est coupé (une animation par ligne)
   let lastTable = null, hadRows = false, staggerTimer = 0;
   function stagger(body) {
@@ -74,7 +74,7 @@
     for (let i = 0; i < n; i++) rows[i].style.setProperty('--fx-i', i);
     body.classList.add('fx-in');
     clearTimeout(staggerTimer);
-    staggerTimer = setTimeout(() => body.classList.remove('fx-in'), 1000);
+    staggerTimer = setTimeout(() => body.classList.remove('fx-in'), 500);
   }
   // Une ligne redessinée (rafraîchissement toutes les 2 s) dont la vitesse a changé : pulsation
   function pulseCells(oldRow, newRow) {

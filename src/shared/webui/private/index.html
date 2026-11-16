@@ -2095,16 +2095,19 @@ async function poll() {
   renderAll();
   renderMenubar();
   if (store.get('mustChange', false)) passwordDialog(true);
-  loadRss(); // compteur de la barre latérale
   api('app/preferences').then((r) => r.json()).then((p) => { state.prefs = p; }).catch(() => {});
   try {
     const r = await api('app/defaultSavePath');
     if (r.ok) state.defaultPath = normalize((await r.text()).trim()) || ROOT;
   } catch (_) {}
-  try { await loadKids(ROOT); } catch (_) {}
-  if (!tree.kids.get(ROOT)?.length) $('#tree').innerHTML = `<div class="tree-msg">Impossible de lire ${esc(ROOT)}.</div>`;
-  else renderTree();
+  // La liste des torrents d'abord : les dossiers du NAS se lisent en même temps (sans la
+  // retarder), les abonnements RSS (réponse volumineuse : tous les articles) seulement après
+  loadKids(ROOT).catch(() => {}).then(() => {
+    if (!tree.kids.get(ROOT)?.length) $('#tree').innerHTML = `<div class="tree-msg">Impossible de lire ${esc(ROOT)}.</div>`;
+    else renderTree();
+  });
   await poll();
+  loadRss(); // compteur de la barre latérale
   handleDownloadHash(); // lien magnet ouvert depuis le navigateur (…#download=magnet:…)
   window.addEventListener('hashchange', handleDownloadHash); // onglet déjà ouvert
   setInterval(poll, 2000);
