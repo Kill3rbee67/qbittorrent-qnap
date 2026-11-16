@@ -2,6 +2,17 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.8.0
+Ajouté
+- Thème **Aurore** (menu Thème, après Terminal) : sombre, fond en dégradé qui dérive lentement avec un grain très léger, barre du haut, barre latérale, menus, fenêtres et page de connexion en verre dépoli, bordures qui s'éclairent près du pointeur, ombres colorées.
+- Aurore, animations : entrée échelonnée des premières lignes de la liste, changement de vue en fondu (View Transitions API quand le navigateur l'a, fondu simple sinon), reflet sur la barre de progression des téléchargements en cours, vitesses qui pulsent quand elles changent, compteurs de la barre latérale et de la barre d'état qui défilent, boutons qui se soulèvent au survol, menus et fenêtres qui s'ouvrent avec un rebond, messages qui glissent.
+- Aurore : **Thème › Arrière-plan animé** (rubans lumineux en canvas, environ 30 images par seconde, suspendus quand l'onglet est caché), actif par défaut sur ordinateur, désactivé par défaut sur téléphone ; le choix est mémorisé par le navigateur (`qbfs.fx`).
+- Aurore respecte « Réduire les animations » du système (plus aucune animation), garde un contour de focus visible partout au clavier, et n'utilise que des fichiers du paquet (aucune police, bibliothèque ni image externe).
+
+Modifié
+- `tests/interface-check.py` : la liste des thèmes contrôlés est lue dans le menu (un thème ajouté est vérifié d'office) ; contrastes d'Aurore calculés aussi pour les textes sur verre ; nouvelles vérifications propres à Aurore (règles limitées au thème, animations de transform et d'opacity seulement, pas de flou dans la liste, `explorer/effets.js` sans requête réseau).
+- Les autres thèmes ne changent pas ; le Classique reste identique au pixel près (styles calculés et captures comparés avant / après).
+
 ## 5.3.7.2
 Corrigé
 - « Espace libre » de la barre d'état faux (quelques Mo) quand le dossier de téléchargement par défaut est un dossier caché du volume, comme celui du paquet (`/share/CACHEDEV1_DATA/.qpkg/qBittorrent/downloads`) : l'interface raccourcissait ce chemin en `/share/.qpkg/…`, qui n'existe pas, et qBittorrent mesurait alors `/share`, petit système de fichiers de QTS en mémoire.

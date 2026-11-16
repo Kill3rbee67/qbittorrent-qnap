@@ -7,7 +7,10 @@
    feuilles de style, images, CDN) ; seul le lien vers la page du projet est permis.
 3. Contrastes : pour chaque thème, chaque couple texte / fond utilisé par l'interface
    atteint 4,5:1 (WCAG AA), calculé à partir des variables de themes.css
-   (var() et color-mix() résolus ici).
+   (var() et color-mix() résolus ici). La liste des thèmes est celle du menu (THEME_IDS).
+4. Thème Aurore (effets) : règles limitées au thème, animations de transform et d'opacity
+   seulement, pas de flou d'arrière-plan sur la liste, « réduire les animations » pris en
+   compte, explorer/effets.js chargé en chemin relatif avec ?v= et sans requête réseau.
 
 Usage : tests/interface-check.py [--details]
 """
@@ -15,7 +18,13 @@ import re, sys, glob, os
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'src', 'shared', 'webui')
 THEMES_CSS = os.path.join(ROOT, 'public', 'explorer', 'themes.css')
-THEMES = ['classique', 'ardoise', 'papier', 'signal', 'minimal', 'futur', 'terminal']
+PRIVATE_HTML = open(os.path.join(ROOT, 'private', 'index.html'), encoding='utf-8').read()
+PUBLIC_HTML = open(os.path.join(ROOT, 'public', 'index.html'), encoding='utf-8').read()
+# Thèmes : la liste du menu (script du <head>), la même pour les deux pages
+def theme_ids(html):
+    m = re.search(r'var THEME_IDS = \[([^\]]*)\]', html)
+    return re.findall(r"'([\w-]+)'", m.group(1)) if m else []
+THEMES = theme_ids(PRIVATE_HTML)
 DETAILS = '--details' in sys.argv
 errors = []
 
@@ -76,6 +85,16 @@ if not urls:
 
 # ---------------------------------------------------------------- 3. contrastes
 css = re.sub(r'/\*.*?\*/', '', open(THEMES_CSS, encoding='utf-8').read(), flags=re.S)
+if 'classique' not in THEMES or 'aurore' not in THEMES:
+    fail('private/index.html : THEME_IDS introuvable ou incomplet')
+if theme_ids(PUBLIC_HTML) != THEMES:
+    fail('public/index.html : THEME_IDS diffère de celui de private/index.html')
+names = re.search(r'const THEME_NAMES = \{([^}]*)\}', PRIVATE_HTML)
+for t in THEMES:
+    if t != 'classique' and f'[data-theme="{t}"] {{' not in ' '.join(css.split()):
+        fail(f'themes.css : pas de bloc [data-theme="{t}"] pour le thème « {t} » du menu')
+    if not names or not re.search(rf'\b{t}: \'', names.group(1)):
+        fail(f'private/index.html : pas de libellé (THEME_NAMES) pour le thème « {t} »')
 blocks = []
 for sel, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css):
     decls = dict((k.strip(), v.strip()) for k, v in re.findall(r'(--[\w-]+)\s*:\s*([^;]+);', body))
@@ -263,6 +282,25 @@ EXTRA = {
     'terminal': [(f'--st-{k}', bg, f'code d\'état [{k}] ({w})') for k in ('dl', 'seed', 'done', 'stop', 'wait', 'err')
                  for bg, w in (('--panel', 'ligne'), ('--row-hover', 'ligne survolée'), ('--row-selected', 'ligne sélectionnée'))],
     'futur': [('--prog-text', '--row-selected', 'pourcentage à côté de la barre, ligne sélectionnée')],
+    # Aurore : textes sur verre. Le fond du couple est le verre posé sur la lumière la plus
+    # vive qui puisse se trouver dessous : --aur-under pour les panneaux posés sur le fond
+    # animé, --accent (bouton principal, barre de progression) pour ce qui s'ouvre par-dessus
+    # la page. Fins de dégradé (--accent-2) du bouton principal et de la barre de progression.
+    'aurore': [(fg, (glass, under), f'{w} ({where})')
+               for glass, under, where, fgs in (
+                   ('--aur-glass', '--aur-under', 'verre : barre latérale, connexion',
+                    (('--text', 'texte'), ('--muted', 'texte secondaire'), ('--link', 'lien'), ('--login-err', 'erreur de connexion'))),
+                   ('--aur-glass-top', '--aur-under', 'verre : barre du haut', (('--header-text', 'texte'),)),
+                   ('--aur-main', '--aur-under', 'zone principale',
+                    (('--text', 'texte'), ('--muted', 'texte secondaire'), ('--faint', 'texte estompé'), ('--link', 'lien'), ('--danger', 'erreur'), ('--log-warn', 'avertissement'))),
+                   ('--aur-tint', ('--aur-main', '--aur-under'), 'barres d\'outils et d\'état',
+                    (('--text', 'texte'), ('--muted', 'texte secondaire'), ('--link', 'lien'), ('--danger', 'erreur'))),
+                   ('--aur-over-menu', '--accent', 'verre : menu au-dessus de la page',
+                    (('--menu-text', 'texte'), ('--menu-icon', 'titres et flèches'), ('--disabled', 'entrée désactivée'))),
+                   ('--aur-over', '--accent', 'verre : fenêtre, barre latérale du téléphone',
+                    (('--text', 'texte'), ('--muted', 'texte secondaire'), ('--link', 'lien'), ('--danger', 'erreur'))),
+               ) for fg, w in fgs]
+              + [('--accent-text', '--accent-2', 'bouton principal (fin du dégradé)'), ('--on-st-dl', '--accent-2', 'pourcentage sur la barre (fin du dégradé)')],
 }
 for t in THEMES:
     v = theme_vars(t)
@@ -294,6 +332,60 @@ for t in THEMES:
     low = [f'{w} {ratio(color_of(v, a), color_of(v, b)):.2f}:1' for a, b, w in GRAPHIC_PAIRS if ratio(color_of(v, a), color_of(v, b)) < 3]
     if low:
         print(f'    info {t} : pastilles d\'état sous 3:1 (l\'état est aussi écrit) : ' + ' ; '.join(low))
+
+# ---------------------------------------------------------------- 4. thème Aurore (effets)
+raw = open(THEMES_CSS, encoding='utf-8').read()
+start = raw.find('5. Aurore')
+before = len(errors)
+if start < 0:
+    fail('themes.css : section « 5. Aurore » introuvable')
+else:
+    sec = re.sub(r'/\*.*?\*/', '', raw[raw.rfind('/*', 0, start):], flags=re.S)
+    # @keyframes : seules transform et opacity sont animées
+    for name, body in re.findall(r'@keyframes\s+([\w-]+)\s*\{((?:[^{}]*\{[^{}]*\})*)\s*\}', sec):
+        props = set(re.findall(r'([\w-]+)\s*:', ' '.join(re.findall(r'\{([^{}]*)\}', body))))
+        if props - {'transform', 'opacity'}:
+            fail(f'themes.css : @keyframes {name} anime {", ".join(sorted(props - {"transform", "opacity"}))} (transform et opacity seulement)')
+    flat = re.sub(r'@keyframes\s+[\w-]+\s*\{(?:[^{}]*\{[^{}]*\})*\s*\}', '', sec)
+    flat = re.sub(r'@property\s+[\w-]+\s*\{[^{}]*\}', '', flat)
+    for sel, body in re.findall(r'([^{}]+)\{([^{}]*)\}', flat):
+        sel = ' '.join(re.sub(r'@media[^{]*$', '', sel).split())
+        if not sel:
+            continue
+        # chaque sélecteur est limité au thème (rien ne déborde sur le Classique ni les autres)
+        for part in split_args(sel):
+            if not part.startswith(':root[data-theme="aurore"]'):
+                fail(f'themes.css, section Aurore : « {part} » n\'est pas limité à :root[data-theme="aurore"]')
+        if 'backdrop-filter' in body and re.search(r'\b(tr|td|tbody)\b|\.tl\b|#trows|\.prog\b|\.content\b', sel):
+            fail(f'themes.css, section Aurore : backdrop-filter dans la liste (« {sel} »)')
+        for m in re.finditer(r'transition\s*:\s*([^;]+)', body):
+            props = {x.split()[0] for x in split_args(m.group(1))}
+            if props - {'transform', 'opacity', 'none'}:
+                fail(f'themes.css, section Aurore : transition de {", ".join(sorted(props - {"transform", "opacity", "none"}))} (« {sel} »)')
+    if not re.search(r'@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[^{}]*:root\[data-theme="aurore"\] \*[^{}]*\{[^{}]*animation:\s*none\s*!important;\s*transition:\s*none\s*!important', sec):
+        fail('themes.css, section Aurore : bloc @media (prefers-reduced-motion: reduce) absent ou incomplet')
+    if ':focus-visible' not in sec:
+        fail('themes.css, section Aurore : focus clavier (:focus-visible) absent')
+EFFETS = os.path.join(ROOT, 'private', 'explorer', 'effets.js')
+if PRIVATE_HTML.count('<script src="explorer/effets.js?v=__QPKG_VER__"></script>') != 1:
+    fail('private/index.html : explorer/effets.js doit être chargé une fois, en chemin relatif, avec ?v=__QPKG_VER__')
+if not os.path.isfile(EFFETS):
+    fail('private/explorer/effets.js introuvable')
+else:
+    js = open(EFFETS, encoding='utf-8').read()
+    code = re.sub(r'//[^\n]*|/\*.*?\*/', '', js, flags=re.S)
+    for rx, what in ((r'\bfetch\s*\(|XMLHttpRequest|\bimport\s*\(|importScripts|sendBeacon|new\s+(?:Image|Worker|WebSocket|EventSource)\b', 'requête réseau'),
+                     (r'createElement\(\s*[\'"](?:script|link|img|iframe|video|audio)[\'"]', 'élément qui charge une ressource'),
+                     (r'\.(?:src|href)\s*=', 'adresse de ressource')):
+        m = re.search(rx, code)
+        if m:
+            fail(f'explorer/effets.js : {what} (« {m.group(0)} ») — le fichier ne doit rien charger')
+    for need, what in (("prefers-reduced-motion", 'la préférence « réduire les animations »'), ('document.hidden', 'la suspension quand l\'onglet est caché'),
+                       ("'aurore'", 'la limitation au thème Aurore')):
+        if need not in js:
+            fail(f'explorer/effets.js : ne tient pas compte de {what}')
+if len(errors) == before:
+    print('OK  thème Aurore : règles limitées au thème, animations de transform / opacity, pas de flou dans la liste, effets.js sans requête réseau')
 
 print(f'\n{"ÉCHEC" if errors else "OK"} : {len(errors)} problème(s)')
 sys.exit(1 if errors else 0)

@@ -14,7 +14,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
 <script>
 // Thème (menu Thème) : appliqué ici, avant l'affichage, pour ne pas apercevoir le thème
 // par défaut. « auto » suit le réglage clair / sombre du système, en direct.
-var THEME_IDS = ['classique', 'ardoise', 'papier', 'signal', 'minimal', 'futur', 'terminal'];
+var THEME_IDS = ['classique', 'ardoise', 'papier', 'signal', 'minimal', 'futur', 'terminal', 'aurore'];
 function themeChoice() {
   try { var t = JSON.parse(localStorage.getItem('qbfs.theme')); return t === 'auto' || THEME_IDS.indexOf(t) >= 0 ? t : 'classique'; }
   catch (e) { return window.themeSession || 'classique'; }
