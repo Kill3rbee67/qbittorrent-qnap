@@ -1,6 +1,6 @@
 # Contribuer
 
-Merci de votre intérêt ! Les contributions sont bienvenues, en particulier :
+Merci de votre intérêt ! Les contributions sont bienvenues, en français comme en anglais (*English is welcome too*), en particulier :
 
 - **Retours sur la version ARM 64 bits** (TS-233, TS-433, TS-x28A, TS-x32X…), qui n'a pas encore été testée sur un vrai NAS : même un simple « ça marche » est utile.
 - **Retours sur la source d'applications App Center** : votre modèle voit-il qBittorrent dans la source ? (la liste des plateformes est dans `tools/make-repository.sh`).
@@ -38,6 +38,16 @@ printf '[LegalNotice]\nAccepted=true\n[WebUI]\nPort=8085\nAlternativeUIEnabled=t
 ```
 
 puis ouvrez <http://localhost:8085> (le mot de passe temporaire s'affiche dans le terminal). Ajoutez `?root=/un/dossier` à l'adresse pour naviguer ailleurs que dans `/share`.
+
+## Mettre à jour les captures d'écran
+
+Les captures du README sont dans `docs/captures/` (1280 × 720 à l'échelle 2, soit 2560 × 1440). Elles montrent le thème Classique, sauf `themes.png` qui juxtapose les huit thèmes.
+
+- N'y faites figurer que des **données de démonstration** : distributions Linux, films libres (Big Buck Bunny, Sintel…), dossiers génériques. Aucun nom réel, adresse de NAS ou contenu protégé.
+- Pour obtenir des téléchargements actifs sans connexion Internet, lancez une seconde instance de `qbittorrent-nox` sur un autre port avec les mêmes `.torrent` et les données correspondantes, puis ajoutez-la comme pair (panneau de détails › onglet Pairs › « Ajouter des pairs… », `127.0.0.1:<port>`).
+- Pour afficher un thème précis dès l'ouverture, réglez `localStorage['qbfs.theme']` (par exemple `"aurore"`).
+- `explorateur.png` est aussi l'image affichée par l'App Center (`<snapshot>` de `repository.xml`) : gardez ce nom de fichier.
+- `.github/assets/social-preview.png` (1280 × 640) est l'image d'aperçu du dépôt ; elle se charge à la main dans Settings › General › Social preview.
 
 ## Organisation et conventions
 
