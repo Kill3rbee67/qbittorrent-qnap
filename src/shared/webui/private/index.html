@@ -394,7 +394,11 @@ const store = {
 function normalize(p) {
   if (!p) return p;
   p = p.replace(/\/+$/, '') || '/';
-  if (ROOT === '/share') p = p.replace(/^\/share\/(CACHEDEV\d+_DATA|MD\d+_DATA|HD[A-Z]_DATA|ZFS\d+_DATA)(?=\/|$)/, '/share');
+  // /share/CACHEDEV1_DATA/<partage>/… → /share/<partage>/… : QTS crée un lien /share/<partage>
+  // pour chaque dossier partagé. Pas pour les dossiers cachés (.qpkg, @Recycle…), qui n'ont pas
+  // de lien : raccourcis, ils désigneraient un dossier inexistant de /share, petit système de
+  // fichiers en mémoire (espace libre faux, téléchargements écrits en mémoire).
+  if (ROOT === '/share') p = p.replace(/^\/share\/(CACHEDEV\d+_DATA|MD\d+_DATA|HD[A-Z]_DATA|ZFS\d+_DATA)(?=\/(?![.@#])|$)/, '/share');
   return p;
 }
 function visibleName(name, dir) {

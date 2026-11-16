@@ -2,6 +2,11 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.7.2
+Corrigé
+- « Espace libre » de la barre d'état faux (quelques Mo) quand le dossier de téléchargement par défaut est un dossier caché du volume, comme celui du paquet (`/share/CACHEDEV1_DATA/.qpkg/qBittorrent/downloads`) : l'interface raccourcissait ce chemin en `/share/.qpkg/…`, qui n'existe pas, et qBittorrent mesurait alors `/share`, petit système de fichiers de QTS en mémoire.
+- Le même raccourci pouvait préremplir ce chemin inexistant comme destination (ajout de torrents, nouvel abonnement RSS) quand on choisissait le dossier par défaut ; les fichiers seraient alors partis en mémoire au lieu du volume. Les chemins des dossiers cachés (`.qpkg`, `@Recycle`…) ne sont plus raccourcis ; ceux des dossiers partagés le restent (`/share/plex/…`).
+
 ## 5.3.7.1
 Corrigé
 - Nouvel abonnement RSS : coller l'adresse de la page de résultats d'une recherche (au lieu de celle du flux) fonctionne de nouveau. Si qBittorrent ne peut pas lire l'adresse collée, l'interface essaie la version flux RSS de la même recherche (`page=rss` ajouté à la fin, comme le faisaient les versions antérieures à la 5.3.4.0) et la garde si elle fonctionne ; l'adresse affichée est mise à jour. Les adresses de flux sont utilisées telles quelles.
