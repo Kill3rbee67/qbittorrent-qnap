@@ -11,7 +11,9 @@
  *  1. valeurs dérivées, communes à tous les thèmes (calculées à partir des
  *     variables de base de chaque thème) ;
  *  2. « Classique » : l'apparence d'origine, valeur par valeur ;
- *  3. un bloc [data-theme="…"] par thème, posé sur <html>.
+ *  3. un bloc [data-theme="…"] par thème, posé sur <html> ;
+ *  4. éléments de présentation propres à certains thèmes ;
+ *  5. thème Aurore : verre dépoli, lumières et animations (avec explorer/effets.js).
  *
  * Variables de base (à définir dans chaque thème) :
  *  --bg --panel --panel-2 --border --text --muted --accent --accent-text --danger
@@ -303,6 +305,30 @@ html { color-scheme: var(--scheme); }
   --shadow: 0 0 0 1px #5A4416;
 }
 
+/* Aurore : sombre, verre dépoli et lumières animées (présentation et effets : section 5) */
+[data-theme="aurore"] {
+  --scheme: dark;
+  --bg: #070B1A; --panel: #0E1428; --panel-2: #121A33; --border: #2A3763;
+  --text: #EAF0FF; --muted: #9AA8CC;
+  --accent: #5EEAD4; --accent-text: #04201C; --accent-2: #A78BFA; --accent-3: #F472B6; --accent-strong: #99F6E4; --accent-hover: #99F6E4;
+  --danger: #FDA4AF; --ok: #6EE7B7; --warn: #FCD34D;
+  --header-bg: #0A1022; --header-text: #EAF0FF;
+  --menu-bg: #131B36; --menu-text: #EAF0FF; --disabled: #8E9BC0;
+  --row-hover: #161F3D; --row-selected: #143645; --progress-track: #1B2547;
+  --side-bg: #0B1124; --th-bg: #121A33;
+  --st-dl: #5EEAD4; --st-seed: #A78BFA; --st-done: #6EE7B7; --st-stop: #94A3B8; --st-err: #FB7185;
+  --on-st-dl: #04201C; --on-st-done: #04201C; --on-st-stop: #04201C; --on-st-err: #04201C;
+  --toast-bg: #EAF0FF; --toast-text: #0B1124;
+  --folder: #E8B45A; --folder-dark: #B98A2E;
+  --font-ui: "Inter", system-ui, sans-serif; --font-num: "JetBrains Mono", ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace; --font-title: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --radius-xs: 6px; --radius-sm: 8px; --radius: 10px; --radius-md: 12px; --radius-lg: 16px;
+  --shadow: 0 18px 48px rgba(2, 4, 14, .6), 0 0 36px rgba(94, 234, 212, .10);
+  --shadow-dlg: 0 30px 80px rgba(2, 4, 14, .65), 0 0 60px rgba(167, 139, 250, .16);
+  --shadow-toast: 0 10px 34px rgba(94, 234, 212, .28);
+  --shadow-side: 8px 0 40px rgba(2, 4, 14, .6);
+}
+
 /* 4. Éléments propres à certains thèmes : présentation seulement (mêmes données, même logique) */
 
 /* Pastilles d'état (Papier, Signal) : fond, texte et bordure par famille d'état */
@@ -446,3 +472,196 @@ html { color-scheme: var(--scheme); }
 :root[data-theme="signal"] .tl td[data-k="eta"]::before { content:"Reste "; color:var(--muted); }
 :root[data-theme="signal"] .tl tbody tr:has(td.emptycell) { display:block; grid-column:1 / -1; border:0; background:none; padding:0; }
 :root[data-theme="signal"] .tl td.emptycell .empty { position:static; width:auto; }
+
+/* ==========================================================================================
+   5. Aurore : verre dépoli, lumières et animations
+   Tout est sous :root[data-theme="aurore"] : rien ici ne s'applique aux autres thèmes.
+   Le peu de JavaScript nécessaire (position du pointeur, canvas, compteurs) est dans
+   private/explorer/effets.js, qui ne contient aucune couleur.
+   Règles suivies :
+    - seules transform et opacity sont animées (les bordures lumineuses, elles, sont
+      repeintes à partir de deux variables écrites par effets.js) ;
+    - backdrop-filter seulement sur les panneaux fixes (barre du haut, barre latérale,
+      menus, fenêtres, carte de connexion), jamais sur les lignes de la liste ;
+    - @media (prefers-reduced-motion: reduce) coupe toutes les animations (fin de section).
+   ========================================================================================== */
+
+/* Position du pointeur dans chaque panneau (écrite par effets.js). Non héritées : les
+   écrire ne recalcule pas le style des descendants (la liste des torrents). */
+@property --aur-mx { syntax: "<length>"; inherits: false; initial-value: -999px; }
+@property --aur-my { syntax: "<length>"; inherits: false; initial-value: -999px; }
+
+:root[data-theme="aurore"] {
+  /* Lumières du fond (dégradé maillé), des rubans du canvas et du halo du pointeur */
+  --aur-m1: color-mix(in srgb, var(--accent) 30%, transparent);
+  --aur-m2: color-mix(in srgb, var(--accent-2) 32%, transparent);
+  --aur-m3: color-mix(in srgb, var(--accent-3) 22%, transparent);
+  --aur-fx-a: var(--accent); --aur-fx-b: var(--accent-2); --aur-fx-c: var(--accent-3); --aur-fx-alpha: .18;
+  --aur-glow: color-mix(in srgb, var(--accent) 40%, transparent);
+  --aur-glow-ring: color-mix(in srgb, var(--accent) 85%, transparent); /* anneau de la zone principale : rien ne passe sous le texte */
+  /* Borne de contraste : la lumière la plus vive qui puisse se trouver sous un panneau de
+     verre posé sur le fond (halo 40 % + ruban 18 % + deux taches du dégradé superposées
+     restent en dessous). tests/interface-check.py vérifie les textes sur verre avec elle. */
+  --aur-under: color-mix(in srgb, var(--accent) 75%, var(--bg));
+  /* Verre : sur le fond (barre du haut, barre latérale, connexion), sur la zone principale,
+     et par-dessus la page (menus, fenêtres, barre latérale du téléphone : plus opaque,
+     car un bouton d'accent ou une barre de progression peut se trouver dessous) */
+  --aur-glass: color-mix(in srgb, var(--panel) 76%, transparent);
+  --aur-glass-top: color-mix(in srgb, var(--header-bg) 76%, transparent);
+  --aur-main: color-mix(in srgb, var(--panel) 88%, transparent);
+  --aur-over: color-mix(in srgb, var(--panel) 90%, transparent);
+  --aur-over-menu: color-mix(in srgb, var(--menu-bg) 90%, transparent);
+  --aur-edge: color-mix(in srgb, var(--text) 16%, transparent);
+  --aur-tint: color-mix(in srgb, var(--text) 4%, transparent);
+  --aur-shine: color-mix(in srgb, var(--text) 45%, transparent);
+  --aur-halo: color-mix(in srgb, var(--accent) 35%, transparent);
+  --aur-shadow: 0 10px 40px rgba(2, 4, 14, .5), 0 0 30px rgba(167, 139, 250, .08);
+  --aur-blur: blur(18px) saturate(1.5);
+  --aur-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --aur-ease: cubic-bezier(.22, 1, .36, 1);
+  --side-hover: color-mix(in srgb, var(--text) 8%, transparent);
+  --caret-hover: color-mix(in srgb, var(--text) 16%, transparent);
+  scrollbar-color: var(--border) transparent;
+}
+
+/* --- Fond : dégradé maillé qui dérive lentement (transform, 10 pas par seconde : le flou
+       des panneaux de verre n'est recalculé qu'à ce rythme), canvas et grain par-dessus --- */
+:root[data-theme="aurore"] body::before {
+  content:""; position:fixed; inset:-30%; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(38% 42% at 22% 28%, var(--aur-m1), transparent 70%),
+    radial-gradient(34% 40% at 78% 22%, var(--aur-m2), transparent 70%),
+    radial-gradient(40% 44% at 64% 78%, var(--aur-m3), transparent 70%),
+    radial-gradient(30% 34% at 28% 80%, var(--aur-m2), transparent 70%);
+  animation:aur-drift 90s steps(900) infinite alternate; will-change:transform;
+}
+@keyframes aur-drift { to { transform:translate3d(4%, -5%, 0) rotate(12deg) scale(1.15); } }
+:root[data-theme="aurore"] :is(.fx-canvas, .fx-grain) { position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none; }
+:root[data-theme="aurore"] .fx-grain { opacity:.07; }
+
+/* --- Disposition : panneaux flottants --- */
+:root[data-theme="aurore"] .top { margin:8px 8px 0; border-radius:var(--radius-lg); }
+:root[data-theme="aurore"] .layout { height:calc(100% - 56px); padding:8px; gap:8px; }
+:root[data-theme="aurore"] :is(.side, main) { border-radius:var(--radius-lg); }
+
+/* --- Verre dépoli et bordure lumineuse (panneaux fixes) ---
+   Trois fonds : le verre (zone intérieure), le halo du pointeur et le filet (zone de bordure). */
+:root[data-theme="aurore"] :is(.top, .side) {
+  border:1px solid transparent;
+  background:
+    linear-gradient(var(--aur-fill), var(--aur-fill)) padding-box,
+    radial-gradient(180px circle at var(--aur-mx) var(--aur-my), var(--aur-glow), transparent 72%) border-box,
+    linear-gradient(var(--aur-edge), var(--aur-edge)) border-box;
+  -webkit-backdrop-filter:var(--aur-blur); backdrop-filter:var(--aur-blur);
+  box-shadow:var(--aur-shadow);
+}
+:root[data-theme="aurore"] .top { --aur-fill:var(--aur-glass-top); }
+:root[data-theme="aurore"] .side { --aur-fill:var(--aur-glass); }
+/* Zone principale : pas de flou (la liste défile dedans) ; la bordure lumineuse est un calque
+   à part, découpé en anneau de 1 px, pour ne pas repeindre la liste quand le pointeur bouge */
+:root[data-theme="aurore"] main { position:relative; overflow:hidden; background:var(--aur-main); box-shadow:var(--aur-shadow); }
+:root[data-theme="aurore"] main::after {
+  content:""; position:absolute; inset:0; z-index:6; padding:1px; border-radius:inherit; pointer-events:none;
+  --aur-mx:inherit; --aur-my:inherit;
+  background:radial-gradient(180px circle at var(--aur-mx) var(--aur-my), var(--aur-glow-ring), transparent 72%), linear-gradient(var(--aur-edge), var(--aur-edge));
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  will-change:transform;
+}
+:root[data-theme="aurore"] :is(.toolbar, .statusbar, .dtool) { background:var(--aur-tint); }
+:root[data-theme="aurore"] .nav { margin:0 8px; padding:6px 8px; border-radius:var(--radius-sm); }
+:root[data-theme="aurore"] .tl tr.sel > td.ck { box-shadow:inset 3px 0 0 var(--accent); }
+
+/* --- Menus, fenêtres, messages : verre et ouverture avec rebond (courbe spring) --- */
+:root[data-theme="aurore"] .menu {
+  background:var(--aur-over-menu); border-color:var(--aur-edge);
+  -webkit-backdrop-filter:var(--aur-blur); backdrop-filter:var(--aur-blur);
+  transform-origin:0 0; animation:aur-pop .3s var(--aur-spring) backwards;
+}
+:root[data-theme="aurore"] .menu button { border-radius:var(--radius-xs); margin:0 4px; width:calc(100% - 8px); }
+:root[data-theme="aurore"] .backdrop { animation:aur-fade .2s ease-out backwards; }
+:root[data-theme="aurore"] .dlg {
+  background:var(--aur-over); border:1px solid var(--aur-edge);
+  -webkit-backdrop-filter:var(--aur-blur); backdrop-filter:var(--aur-blur);
+  animation:aur-rise .42s var(--aur-spring) backwards;
+}
+:root[data-theme="aurore"] .dlg :is(h2, .foot) { background:var(--aur-tint); }
+:root[data-theme="aurore"] .toast { transform:translateX(calc(100% + 32px)); transition:transform .5s var(--aur-spring), opacity .25s ease-out; }
+:root[data-theme="aurore"] .toast.show { transform:none; }
+@keyframes aur-pop { from { opacity:0; transform:translateY(-6px) scale(.94); } }
+@keyframes aur-rise { from { opacity:0; transform:translateY(18px) scale(.95); } }
+@keyframes aur-fade { from { opacity:0; } }
+
+/* --- Boutons : légère translation et halo au survol (le halo est un calque dont seule
+       l'opacité change) --- */
+/* transform présent dès le repos (translateY(0)) : le survol ne change que sa valeur, sans nouvelle mise en page */
+:root[data-theme="aurore"] :is(.btn, .tbtn) { position:relative; transform:translateY(0); transition:transform .22s var(--aur-spring); }
+:root[data-theme="aurore"] :is(.btn, .tbtn)::after {
+  content:""; position:absolute; inset:-1px; border-radius:inherit; pointer-events:none;
+  box-shadow:0 0 0 1px var(--accent-line), 0 6px 22px var(--aur-halo); opacity:0; transition:opacity .2s ease-out;
+}
+:root[data-theme="aurore"] :is(.btn, .tbtn):hover:not(:disabled) { transform:translateY(-1px); }
+:root[data-theme="aurore"] :is(.btn, .tbtn):hover:not(:disabled)::after { opacity:1; }
+:root[data-theme="aurore"] :is(.btn, .tbtn):active:not(:disabled) { transform:scale(.97); }
+:root[data-theme="aurore"] .btn.primary { background:linear-gradient(135deg, var(--accent), var(--accent-2)); border-color:transparent; }
+:root[data-theme="aurore"] .btn.primary:hover:not(:disabled) { background:linear-gradient(135deg, var(--accent-hover), var(--accent-2)); border-color:transparent; }
+
+/* --- Liste des torrents --- */
+/* Entrée échelonnée : effets.js pose .fx-in sur la liste quand la vue vient d'être dessinée
+   et numérote les 24 premières lignes (--fx-i) ; les lignes redessinées ensuite ne rejouent rien */
+:root[data-theme="aurore"] #trows.fx-in > tr:nth-child(-n+24) { animation:aur-row .42s var(--aur-ease) backwards; animation-delay:calc(var(--fx-i, 0) * 22ms); }
+@keyframes aur-row { from { opacity:0; transform:translateY(10px); } }
+/* Barre de progression : dégradé, et reflet qui la traverse pour les téléchargements en cours
+   (coupé par effets.js, classe .fx-many, quand plus de 40 lignes sont en téléchargement) */
+:root[data-theme="aurore"] .prog { border-radius:var(--radius-pill); }
+:root[data-theme="aurore"] .prog:not(.done, .stop, .err) i { background:linear-gradient(90deg, var(--st-dl), var(--accent-2)); }
+:root[data-theme="aurore"] #trows:not(.fx-many) tr[data-st="dl"] .prog:not(.done, .stop, .err) i::after {
+  content:""; position:absolute; inset:0; background:linear-gradient(100deg, transparent 30%, var(--aur-shine) 50%, transparent 70%);
+  transform:translateX(-100%); animation:aur-shimmer 1.9s ease-in-out infinite;
+}
+@keyframes aur-shimmer { 60%, 100% { transform:translateX(100%); } }
+/* Vitesse qui vient de changer (barre du haut : deux animations identiques en alternance,
+   pour rejouer la pulsation ; cellules de la liste : la ligne vient d'être redessinée) */
+:root[data-theme="aurore"] .fx-pa { animation:aur-pulse-a .55s var(--aur-ease); }
+:root[data-theme="aurore"] .fx-pb { animation:aur-pulse-b .55s var(--aur-ease); }
+@keyframes aur-pulse-a { from { opacity:.35; transform:scale(1.14); } }
+@keyframes aur-pulse-b { from { opacity:.35; transform:scale(1.14); } }
+
+/* --- Changement de vue : View Transitions API, sinon fondu posé par effets.js --- */
+:root[data-theme="aurore"] .content { view-transition-name:aur-vue; }
+:root[data-theme="aurore"]::view-transition { pointer-events:none; }
+:root[data-theme="aurore"]::view-transition-old(root), :root[data-theme="aurore"]::view-transition-new(root) { animation:none; mix-blend-mode:normal; }
+:root[data-theme="aurore"]::view-transition-old(aur-vue) { animation:aur-leave .16s ease-in both; }
+:root[data-theme="aurore"]::view-transition-new(aur-vue) { animation:aur-enter .3s var(--aur-ease) both; }
+:root[data-theme="aurore"] .content.fx-view-a { animation:aur-enter .3s var(--aur-ease) backwards; }
+:root[data-theme="aurore"] .content.fx-view-b { animation:aur-enter-b .3s var(--aur-ease) backwards; }
+@keyframes aur-leave { to { opacity:0; transform:translateY(-6px); } }
+@keyframes aur-enter { from { opacity:0; transform:translateY(8px); } }
+@keyframes aur-enter-b { from { opacity:0; transform:translateY(8px); } }
+
+/* --- Focus clavier toujours visible --- */
+:root[data-theme="aurore"] :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+:root[data-theme="aurore"] :is(th, .menu button, .seg button, .dtabs .tab, .settings nav button, .rz):focus-visible { outline-offset:-2px; }
+
+/* --- Page de connexion : carte de verre sur le même fond --- */
+:root[data-theme="aurore"] .card {
+  background:var(--aur-glass); border:1px solid var(--aur-edge);
+  -webkit-backdrop-filter:var(--aur-blur); backdrop-filter:var(--aur-blur);
+  animation:aur-rise .5s var(--aur-spring) backwards;
+}
+
+/* --- Téléphone : la barre latérale glisse par-dessus la liste (verre plus opaque) --- */
+@media (max-width: 760px) {
+  :root[data-theme="aurore"] .top { margin:6px 6px 0; }
+  :root[data-theme="aurore"] .layout { height:calc(100% - 54px); padding:6px; }
+  :root[data-theme="aurore"] .side { --aur-fill:var(--aur-over); top:60px; bottom:6px; left:6px; transform:translateX(calc(-100% - 12px)); transition:transform .34s var(--aur-ease); }
+  :root[data-theme="aurore"] body.side-open .side { transform:none; }
+}
+
+/* --- « Réduire les animations » : plus aucune animation ni transition ; le canvas est
+       retiré par effets.js, qui n'anime alors ni compteurs ni changements de vue --- */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="aurore"] *, :root[data-theme="aurore"] *::before, :root[data-theme="aurore"] *::after { animation:none !important; transition:none !important; }
+  :root[data-theme="aurore"]::view-transition-group(*), :root[data-theme="aurore"]::view-transition-old(*), :root[data-theme="aurore"]::view-transition-new(*) { animation:none !important; }
+  :root[data-theme="aurore"] .fx-canvas { display:none; }
+}

@@ -33,11 +33,11 @@ Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorr
 
 ## Thèmes
 
-Le menu **Thème** (entre Outils et Aide) change l'apparence de l'interface explorateur et de la page de connexion : **Classique** (l'apparence d'origine, par défaut), **Ardoise** (sombre), **Papier** (clair, tons chauds), **Signal** (contraste fort), **Minimal**, **Futur** et **Terminal**. **Automatique** suit le réglage clair / sombre de l'ordinateur ou du téléphone (Papier ou Ardoise) et bascule en direct.
+Le menu **Thème** (entre Outils et Aide) change l'apparence de l'interface explorateur et de la page de connexion : **Classique** (l'apparence d'origine, par défaut), **Ardoise** (sombre), **Papier** (clair, tons chauds), **Signal** (contraste fort), **Minimal**, **Futur**, **Terminal** et **Aurore** (sombre, verre dépoli et animations). **Automatique** suit le réglage clair / sombre de l'ordinateur ou du téléphone (Papier ou Ardoise) et bascule en direct.
 
 Le choix s'applique aussitôt, sans recharger la page, et il est mémorisé par le navigateur : chaque navigateur, et chaque adresse (`http://NAS:8085` ou `/qbittorrent/`), garde le sien. L'interface classique de qBittorrent (« ⇄ Interface classique ») n'est pas concernée.
 
-Certains thèmes changent aussi la présentation, jamais les données ni les actions : **Signal** affiche les torrents en cartes, **Papier** et **Signal** les états en pastilles, **Futur** des barres segmentées et des jauges de vitesse, **Terminal** des états [DL] [UP] [OK] et des barres en caractères. Dans les menus, une touche ouvre chaque entrée (affichée entre crochets par le thème Terminal).
+Certains thèmes changent aussi la présentation, jamais les données ni les actions : **Signal** affiche les torrents en cartes, **Papier** et **Signal** les états en pastilles, **Futur** des barres segmentées et des jauges de vitesse, **Terminal** des états [DL] [UP] [OK] et des barres en caractères, **Aurore** des panneaux de verre, un fond animé et des transitions (son arrière-plan animé se coupe dans le menu Thème ; avec « Réduire les animations » activé dans le système, il n'anime rien). Dans les menus, une touche ouvre chaque entrée (affichée entre crochets par le thème Terminal).
 
 Tous les thèmes respectent un contraste d'au moins 4,5:1 pour le texte. Les polices sont incluses dans le paquet : aucune n'est téléchargée depuis Internet, et le navigateur ne charge que celles du thème choisi.
 

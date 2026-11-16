@@ -48,7 +48,7 @@ Avant de commencer : sauvegardez le profil (voir README, « Mise à jour et migr
 
 | # | Action | Résultat attendu |
 |---|---|---|
-| 2t.1 | Menu Thème. | Il s'ouvre sous son onglet : Automatique, puis Classique, Ardoise, Papier, Signal, Minimal, Futur, Terminal, chacun avec 4 carrés de couleur ; coche sur Classique. |
+| 2t.1 | Menu Thème. | Il s'ouvre sous son onglet : Automatique, puis Classique, Ardoise, Papier, Signal, Minimal, Futur, Terminal, Aurore, chacun avec 4 carrés de couleur ; coche sur Classique. |
 | 2t.2 | Choisir chaque thème l'un après l'autre. | Couleurs et polices changent aussitôt, sans rechargement ; la sélection, le tri et la position dans la liste restent. Textes lisibles partout (liste, barre latérale, menus, entrées grisées, en-têtes de colonnes, barres de progression). |
 | 2t.3 | Avec un thème choisi : ouvrir Réglages, l'ajout d'un torrent, le panneau de détails, le lecteur RSS, un clic droit. | Fenêtres, champs, listes déroulantes et menus aux couleurs du thème. |
 | 2t.4 | Recharger la page (Ctrl+F5). | Le thème est conservé et s'affiche directement, sans passer par le Classique. |
@@ -72,6 +72,53 @@ Avant de commencer : sauvegardez le profil (voir README, « Mise à jour et migr
 | 2q.7 | Thème Terminal. | États [DL] [UP] [OK] [--] [!!], barres [#####.....], pointillés, [x] / (*) et raccourcis [D] [A]… dans les menus. |
 | 2q.8 | Terminal : ouvrir Affichage, appuyer sur la lettre affichée devant « Journal… ». | Le journal s'ouvre. |
 | 2q.9 | Thème Minimal. | Barre de progression de 2 px, menus sans ombre. |
+
+## 2 quinquies. Thème Aurore (QTS)
+
+À faire dans Chrome (ou Edge, Opera) **et** dans Firefox sur ordinateur, puis sur téléphone. Sauf mention contraire, le résultat attendu est le même dans les deux navigateurs.
+
+Ordinateur — Chrome et Firefox
+
+| # | Action | Résultat attendu |
+|---|---|---|
+| 2qq.1 | Menu Thème › Aurore. | Thème sombre appliqué aussitôt : fond aux lueurs colorées qui dérivent très lentement, grain à peine visible, barre du haut et barre latérale en verre dépoli (le fond se devine, flou, à travers), panneaux aux coins arrondis séparés par un espace. Une entrée « Arrière-plan animé », cochée, apparaît en bas du menu Thème. |
+| 2qq.2 | Promener le pointeur près des bords de la barre du haut, de la barre latérale et de la zone principale. | Un halo suit le pointeur le long de la bordure du panneau ; rien ne saute ni ne clignote dans la liste. |
+| 2qq.3 | Cliquer sur plusieurs filtres de la barre latérale, ouvrir un dossier, revenir à « Tous ». | Changement de vue en fondu (l'ancienne vue s'efface, la nouvelle monte légèrement) ; les premières lignes de la liste arrivent l'une après l'autre. Pendant le fondu, un second clic est pris en compte. |
+| 2qq.4 | Avec un téléchargement actif, regarder la liste pendant 10 secondes. | Un reflet traverse sa barre de progression ; sa vitesse (colonne et barre du haut) pulse brièvement quand elle change ; les autres lignes ne bougent pas ; la liste ne rejoue pas son animation d'entrée toutes les 2 secondes. |
+| 2qq.5 | Arrêter ou ajouter un torrent, taper un mot dans « Rechercher un torrent ». | Les compteurs de la barre latérale et « N torrents » de la barre d'état défilent jusqu'à leur nouvelle valeur, qui est exacte. |
+| 2qq.6 | Survoler les boutons de la barre d'outils et de la barre du haut ; ouvrir un menu, un sous-menu (clic droit sur un torrent › Catégorie), Outils › Réglages ; provoquer un message (Colonnes › Réinitialiser). | Boutons : léger soulèvement et halo. Menus et fenêtres : ouverture avec un petit rebond, en verre dépoli, entièrement visibles, textes lisibles même au-dessus du bouton « Ajouter ». Message : glisse depuis la droite puis repart. |
+| 2qq.7 | Thème › Arrière-plan animé (décocher), recharger la page, puis le recocher. | Les rubans lumineux du fond disparaissent (les lueurs et le verre restent) ; le choix est conservé après rechargement ; recoché, ils reviennent. |
+| 2qq.8 | Laisser l'onglet en arrière-plan une minute (autre onglet au premier plan), y revenir. | Le processeur de l'onglet retombe à zéro pendant ce temps (gestionnaire de tâches du navigateur) ; au retour, l'animation reprend sans saccade. |
+| 2qq.9 | Avec plusieurs centaines de torrents (ou la liste la plus longue disponible) : faire défiler vite, trier, redimensionner une colonne, promener le pointeur. | Aussi fluide qu'en Ardoise ; le rafraîchissement toutes les 2 s ne fige pas la page. Si ce n'est pas le cas, noter le navigateur et la machine, et refaire l'essai avec « Arrière-plan animé » décoché. |
+| 2qq.10 | Colonnes : en masquer une, en élargir une ; recharger ; passer en Classique puis revenir en Aurore. | Colonnes, largeurs et thème conservés (mêmes réglages que dans les autres thèmes). |
+| 2qq.11 | Se déconnecter. | Page de connexion en Aurore : carte de verre sur le fond aux lueurs, champs et avertissement lisibles. |
+| 2qq.12 | Thème › Classique. | Retour exact à l'apparence d'origine : plus de fond animé, de halo ni d'animation ; rien d'Aurore ne subsiste. |
+| 2qq.13 | Firefox seulement : refaire 2qq.1, 2qq.3 et 2qq.6. | Verre dépoli et halos présents. Changement de vue : fondu identique à Chrome dans un Firefox récent ; dans un Firefox plus ancien, la nouvelle vue apparaît en fondu sans effacement de l'ancienne — c'est le repli prévu, pas une anomalie. |
+
+Réduire les animations
+
+| # | Action | Résultat attendu |
+|---|---|---|
+| 2qq.14 | Activer « Réduire les animations » dans le système (Windows : Paramètres › Accessibilité › Effets visuels › Effets d'animation ; macOS : Réglages › Accessibilité › Affichage › Réduire les animations ; Android / iOS : Accessibilité), recharger la page en Aurore. | Plus aucun mouvement : fond immobile, pas de rubans, pas de reflet sur les barres, pas de pulsation, compteurs changés d'un coup, vues et menus affichés immédiatement, messages sans glissement. Couleurs, verre et halo du pointeur inchangés. Dans le menu Thème, « Arrière-plan animé » est grisé. |
+| 2qq.15 | Désactiver « Réduire les animations » sans recharger. | Les animations reviennent d'elles-mêmes. |
+
+Clavier
+
+| # | Action | Résultat attendu |
+|---|---|---|
+| 2qq.16 | Depuis la barre d'adresse, Tab à travers toute la page : menus, vitesses, boutons de la barre du haut, barre d'outils, recherche, en-têtes de colonnes et leurs poignées, cases des lignes. | Chaque élément atteint porte un contour net de la couleur d'accent, visible sur le verre comme sur la liste ; l'ordre est le même qu'en Classique. |
+| 2qq.17 | Tab jusqu'à Thème, Entrée, ↓ jusqu'à « Arrière-plan animé », Entrée ; rouvrir, Échap. | L'entrée se coche et se décoche au clavier ; Échap ferme le menu et rend le focus à l'onglet. |
+| 2qq.18 | Outils › Réglages au clavier : Tab dans les champs, Échap. | Contour visible sur chaque champ, case et bouton ; Échap ferme la fenêtre. |
+| 2qq.19 | Regarder l'interface en niveaux de gris (filtre de couleur du système) ou à travers une capture en noir et blanc. | États toujours écrits en toutes lettres à côté de leur pastille, pourcentage écrit sur chaque barre, thème et option actifs cochés (✓), filtre actif en gras avec un trait à gauche, ligne sélectionnée cochée avec un trait à gauche : rien ne dépend de la seule couleur. |
+
+Téléphone (largeur ≤ 760 px)
+
+| # | Action | Résultat attendu |
+|---|---|---|
+| 2qq.20 | « Menu ▾ » › Aurore. | Thème appliqué ; colonnes Nom et Progression seulement ; pas de défilement horizontal de la page ; « Arrière-plan animé » décoché par défaut. |
+| 2qq.21 | Bouton ☰. | La barre latérale glisse par-dessus la liste, en verre dépoli plus opaque : ses textes restent lisibles au-dessus des barres de progression ; toucher un filtre la referme et change la vue. |
+| 2qq.22 | Toucher un torrent, ouvrir Réglages depuis « Menu ▾ », faire défiler la liste. | Panneau de détails, fenêtre et menus entièrement utilisables ; défilement fluide ; aucun halo ne reste accroché après un toucher. |
+| 2qq.23 | Par myQNAPcloud Link (adresse en `/qbittorrent/`) : refaire 2qq.1 et 2qq.11. | Mêmes résultats ; aucune requête vers un autre site (onglet Réseau des outils de développement : tout vient de l'adresse du NAS). |
 
 ## 3. Panneau de détails (QTS)
 

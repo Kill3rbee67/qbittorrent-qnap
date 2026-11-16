@@ -14,7 +14,7 @@ if (!/\/$|\.html$/.test(location.pathname)) location.replace(location.pathname +
 <script>
 // Thème (menu Thème) : appliqué ici, avant l'affichage, pour ne pas apercevoir le thème
 // par défaut. « auto » suit le réglage clair / sombre du système, en direct.
-var THEME_IDS = ['classique', 'ardoise', 'papier', 'signal', 'minimal', 'futur', 'terminal'];
+var THEME_IDS = ['classique', 'ardoise', 'papier', 'signal', 'minimal', 'futur', 'terminal', 'aurore'];
 function themeChoice() {
   try { var t = JSON.parse(localStorage.getItem('qbfs.theme')); return t === 'auto' || THEME_IDS.indexOf(t) >= 0 ? t : 'classique'; }
   catch (e) { return window.themeSession || 'classique'; }
@@ -1319,14 +1319,15 @@ function renderMenubar() {
     + '<button class="mall" data-menu="all" aria-haspopup="menu">Menu ▾</button>';
 }
 /* ---------- Thèmes (variables : explorer/themes.css ; application : script du <head>) ---------- */
-const THEME_NAMES = { classique: 'Classique', ardoise: 'Ardoise', papier: 'Papier', signal: 'Signal', minimal: 'Minimal', futur: 'Futur', terminal: 'Terminal' };
+const THEME_NAMES = { classique: 'Classique', ardoise: 'Ardoise', papier: 'Papier', signal: 'Signal', minimal: 'Minimal', futur: 'Futur', terminal: 'Terminal', aurore: 'Aurore' };
 // Aperçu : fond, panneau, accent, texte du thème (data-theme sur l'aperçu lui-même)
 const swatch = (ids) => `<span class="swatch" aria-hidden="true">${ids.map((id) =>
   `<span data-theme="${id}">${['bg', 'panel', 'accent', 'text'].map((v) => `<i style="background:var(--${v})"></i>`).join('')}</span>`).join('')}</span>`;
 function themeItems() {
   const cur = window.themeSession || 'classique';
   return [['theme:auto', 'Automatique (clair : Papier, sombre : Ardoise)', null, false, cur === 'auto', null, swatch(['papier', 'ardoise'])], '-',
-    ...THEME_IDS.map((id) => [`theme:${id}`, THEME_NAMES[id], null, false, cur === id, null, swatch([id])])];
+    ...THEME_IDS.map((id) => [`theme:${id}`, THEME_NAMES[id], null, false, cur === id, null, swatch([id])]),
+    ...(window.fxThemeItems ? fxThemeItems() : [])]; // réglages d'effets du thème affiché (explorer/effets.js)
 }
 // Changement immédiat : seul l'attribut data-theme de <html> change, la liste n'est pas reconstruite
 function setTheme(id) {
@@ -1336,6 +1337,7 @@ function setTheme(id) {
 }
 async function runMenu(act) {
   if (act.startsWith('theme:')) return setTheme(act.slice(6));
+  if (act.startsWith('fx:')) return window.fxRun && fxRun(act);
   const hs = selHashes(), n = hs.length, p = (path, extra = {}) => apiAct(path, { hashes: hs.join('|'), ...extra });
   const done = (msg) => { if (msg) toast(msg); setTimeout(poll, 400); };
   if (await runTorrentMenu(act, hs)) return;
@@ -2109,5 +2111,6 @@ async function poll() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 })();
 </script>
+<script src="explorer/effets.js?v=__QPKG_VER__"></script>
 </body>
 </html>
