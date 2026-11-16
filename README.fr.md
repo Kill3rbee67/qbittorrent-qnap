@@ -1,10 +1,10 @@
 # qBittorrent pour QNAP
 
-> **English** — A ready-to-install **QPKG** that adds qBittorrent 5.3 to QNAP NAS models (x86_64; ARM 64-bit build available, experimental), with a French web UI laid out like a file browser: browse your NAS shares and add `.torrent` files or magnet links straight into the folder you are viewing, subscribe to RSS feeds per folder, get e-mail or webhook notifications. Install from App Center (enable unsigned apps first, then either add the app repository `https://raw.githubusercontent.com/Kill3rbee67/qbittorrent-qnap/main/repository.xml` or install the `.qpkg` from the [releases](../../releases/latest) manually), open `http://NAS-IP:8085` (or `/qbittorrent/` on the QTS address, which also works remotely through myQNAPcloud Link) and log in with `admin` / `adminadmin` — **this default password is public: change it immediately** (you will be asked to) and never expose port 8085 to the Internet. Contributions welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+[English](README.md) · **Français**
 
 Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorrent.org/) à un NAS QNAP, avec une interface web en français organisée comme un explorateur de fichiers. Pensé comme une alternative à Download Station : pas de Docker, pas de ligne de commande, tout se fait depuis l'App Center et le navigateur.
 
-![Explorateur de dossiers du NAS](docs/captures/explorateur.png)
+![Explorateur : le dossier « torrents » du NAS, avec deux fichiers .torrent cochés prêts à être ajoutés](docs/captures/explorateur.png)
 
 ## Fonctionnalités
 
@@ -29,9 +29,13 @@ Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorr
 - L'**interface d'origine** de qBittorrent (en français) reste incluse en secours : bouton « ⇄ Interface classique » pour y aller, bouton « ⇄ Interface explorateur » pour revenir.
 - Non repris dans l'explorateur : le **moteur de recherche** de qBittorrent (il demande Python sur le NAS et des greffons propres à chaque site) et le graphique de vitesse.
 
-![Liste des téléchargements](docs/captures/telechargements.png)
+![Fenêtre d'ajout : dossier de destination et espace libre affichés avant de lancer le téléchargement](docs/captures/ajout-torrents.png)
+
+![Liste des téléchargements en cours, avec le panneau de détails d'un torrent](docs/captures/telechargements.png)
 
 ## Thèmes
+
+![Les huit thèmes : Classique, Ardoise, Papier, Signal, Minimal, Futur, Terminal et Aurore](docs/captures/themes.png)
 
 Le menu **Thème** (entre Outils et Aide) change l'apparence de l'interface explorateur et de la page de connexion : **Classique** (l'apparence d'origine, par défaut), **Ardoise** (sombre), **Papier** (clair, tons chauds), **Signal** (contraste fort), **Minimal**, **Futur**, **Terminal** et **Aurore** (sombre, verre dépoli et animations). **Automatique** suit le réglage clair / sombre de l'ordinateur ou du téléphone (Papier ou Ardoise) et bascule en direct.
 
@@ -84,7 +88,7 @@ Ouvrez ensuite **`http://IP-DE-VOTRE-NAS:8085`**.
 
 > ⚠️ **Ce mot de passe initial est public** (il figure ici, dans un dépôt public). Tant que vous ne l'avez pas changé, n'importe qui sur votre réseau peut se connecter à qBittorrent. L'interface vous impose d'en choisir un autre dès la première connexion : faites-le **juste après l'installation**, avant de rendre le NAS accessible à d'autres personnes, et n'ouvrez jamais le port 8085 sur Internet.
 
-![Choix du mot de passe à la première connexion](docs/captures/premiere-connexion.png)
+![Fenêtre « Choisissez votre mot de passe » affichée à la première connexion](docs/captures/premiere-connexion.png)
 
 Vous pourrez ensuite le modifier à tout moment avec Outils › Mot de passe. La page de connexion rappelle ces consignes, et affiche une alerte renforcée si elle est ouverte depuis une adresse Internet.
 
