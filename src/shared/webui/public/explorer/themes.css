@@ -608,8 +608,8 @@ html { color-scheme: var(--scheme); }
 
 /* --- Liste des torrents --- */
 /* Entrée échelonnée : effets.js pose .fx-in sur la liste quand la vue vient d'être dessinée
-   et numérote les 24 premières lignes (--fx-i) ; les lignes redessinées ensuite ne rejouent rien */
-:root[data-theme="aurore"] #trows.fx-in > tr:nth-child(-n+24) { animation:aur-row .42s var(--aur-ease) backwards; animation-delay:calc(var(--fx-i, 0) * 22ms); }
+   et numérote les 12 premières lignes (--fx-i) ; les lignes redessinées ensuite ne rejouent rien */
+:root[data-theme="aurore"] #trows.fx-in > tr:nth-child(-n+12) { animation:aur-row .26s var(--aur-ease) backwards; animation-delay:calc(var(--fx-i, 0) * 14ms); }
 @keyframes aur-row { from { opacity:0; transform:translateY(10px); } }
 /* Barre de progression : dégradé, et reflet qui la traverse pour les téléchargements en cours
    (coupé par effets.js, classe .fx-many, quand plus de 40 lignes sont en téléchargement) */

@@ -92,6 +92,7 @@ Ordinateur — Chrome et Firefox
 | 2qq.9 | Avec plusieurs centaines de torrents (ou la liste la plus longue disponible) : faire défiler vite, trier, redimensionner une colonne, promener le pointeur. | Aussi fluide qu'en Ardoise ; le rafraîchissement toutes les 2 s ne fige pas la page. Si ce n'est pas le cas, noter le navigateur et la machine, et refaire l'essai avec « Arrière-plan animé » décoché. |
 | 2qq.10 | Colonnes : en masquer une, en élargir une ; recharger ; passer en Classique puis revenir en Aurore. | Colonnes, largeurs et thème conservés (mêmes réglages que dans les autres thèmes). |
 | 2qq.11 | Se déconnecter. | Page de connexion en Aurore : carte de verre sur le fond aux lueurs, champs et avertissement lisibles. |
+| 2qq.11b | Recharger la page (F5) en Aurore, puis en Papier. | La liste des torrents s'affiche aussi vite dans les deux thèmes, avant ou en même temps que les dossiers de la barre latérale ; en Aurore, l'entrée des lignes dure moins d'une demi-seconde. |
 | 2qq.12 | Thème › Classique. | Retour exact à l'apparence d'origine : plus de fond animé, de halo ni d'animation ; rien d'Aurore ne subsiste. |
 | 2qq.13 | Firefox seulement : refaire 2qq.1, 2qq.3 et 2qq.6. | Verre dépoli et halos présents. Changement de vue : fondu identique à Chrome dans un Firefox récent ; dans un Firefox plus ancien, la nouvelle vue apparaît en fondu sans effacement de l'ancienne — c'est le repli prévu, pas une anomalie. |
 
