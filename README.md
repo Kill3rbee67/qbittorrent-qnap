@@ -4,14 +4,14 @@
 
 A ready-to-install **QPKG** that adds [qBittorrent](https://www.qbittorrent.org/) to a QNAP NAS, with a web interface laid out like a file browser: open a shared folder, drop your torrents in, and they download there. Built as a replacement for Download Station. No Docker, no command line: everything happens in App Center and your browser.
 
-![Download list with live transfers and the details panel of one torrent](docs/captures/telechargements.png)
+![Download list with live transfers and the details panel of one torrent](docs/captures/en/downloads.png)
 
 [![Build](https://github.com/Kill3rbee67/qbittorrent-qnap/actions/workflows/build.yml/badge.svg)](https://github.com/Kill3rbee67/qbittorrent-qnap/actions/workflows/build.yml)
 [![Latest release](https://img.shields.io/github/v/release/Kill3rbee67/qbittorrent-qnap)](https://github.com/Kill3rbee67/qbittorrent-qnap/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Kill3rbee67/qbittorrent-qnap/total)](https://github.com/Kill3rbee67/qbittorrent-qnap/releases)
 [![License: GPL-2.0-or-later](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](LICENSE)
 
-> **Language:** the explorer interface is in **French only** for now. The original qBittorrent Web UI, with all its translations, is bundled and one click away ("⇄ Interface classique"). Screenshots below show the French interface.
+> **Language:** the interface is available in **English and French**. Switch with the **FR / EN** buttons in the top bar; the choice is remembered by your browser. Without a choice, it follows your browser language.
 
 ## Why this package
 
@@ -21,6 +21,7 @@ A ready-to-install **QPKG** that adds [qBittorrent](https://www.qbittorrent.org/
 - **Get notified.** E-mail when a download completes, or a webhook (Discord, Slack, Mattermost, ntfy, Home Assistant…) when a torrent is added or finished.
 - **Reach it from outside without opening a port.** The interface is also served by QTS at `/qbittorrent/`, which works through myQNAPcloud Link.
 - **Keep everything qBittorrent can do.** Menus, right-click actions, the details panel (files, trackers, peers), categories, tags, about 190 settings, speed limits, the log and the torrent creator are all there. The original Web UI stays available as a fallback.
+- **Use it in English or French.** One click in the top bar switches the whole interface.
 - **Choose how it looks.** Eight themes, with the fonts shipped in the package: nothing is loaded from the Internet.
 - **Update without losing anything.** Password, settings, torrents and RSS subscriptions survive updates, and every release is tested for exactly that before it is published.
 
@@ -28,7 +29,7 @@ Not included in the explorer interface: qBittorrent's search engine (it needs Py
 
 | Browse a folder and tick the torrents to add | Check destination and free space |
 |---|---|
-| ![File browser showing the "torrents" folder of the NAS with two .torrent files selected](docs/captures/explorateur.png) | ![Add dialog listing two torrents, the destination folder and its free space](docs/captures/ajout-torrents.png) |
+| ![File browser showing the "torrents" folder of the NAS with two .torrent files selected](docs/captures/en/file-browser.png) | ![Add dialog listing two torrents, the destination folder and its free space](docs/captures/en/add-torrents.png) |
 
 ## Compatibility
 
@@ -53,7 +54,7 @@ If you try the ARM build, please [tell us how it went](https://github.com/Kill3r
 
 > ⚠️ **The initial password is public** (it is written right here). Until you change it, anyone on your network can sign in. Do it right after installing, and never expose port 8085 to the Internet.
 
-![First sign-in: the interface asks you to choose your own password](docs/captures/premiere-connexion.png)
+![First sign-in: the interface asks you to choose your own password](docs/captures/en/first-sign-in.png)
 
 ### Alternative: add the app repository (in testing)
 
@@ -69,7 +70,7 @@ This method has not been verified on every model. If qBittorrent does not show u
 
 ![The eight themes side by side: Classique, Ardoise, Papier, Signal, Minimal, Futur, Terminal and Aurore](docs/captures/themes.png)
 
-The **Thème** menu switches between **Classique** (default), **Ardoise** (dark), **Papier** (light, warm), **Signal** (high contrast, torrents as cards), **Minimal**, **Futur**, **Terminal** and **Aurore** (dark, frosted glass, animations). **Automatique** follows the light / dark setting of your device. The choice applies instantly and is remembered per browser. Every theme keeps text contrast at 4.5:1 or better, which the build checks.
+The **Theme** menu switches between **Classique** (default), **Ardoise** (dark), **Papier** (light, warm), **Signal** (high contrast, torrents as cards), **Minimal**, **Futur**, **Terminal** and **Aurore** (dark, frosted glass, animations). **Automatic** follows the light / dark setting of your device. The choice applies instantly and is remembered per browser. Every theme keeps text contrast at 4.5:1 or better, which the build checks.
 
 ## Everyday use
 

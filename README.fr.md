@@ -33,6 +33,10 @@ Paquet **QPKG** prêt à installer qui ajoute [qBittorrent](https://www.qbittorr
 
 ![Liste des téléchargements en cours, avec le panneau de détails d'un torrent](docs/captures/telechargements.png)
 
+## Langue
+
+L'interface existe en **français et en anglais**. Les boutons **FR / EN** de la barre du haut (et de la page de connexion) font passer d'une langue à l'autre ; le choix est mémorisé par le navigateur. Sans choix, l'interface suit la langue du navigateur : français s'il est en français, anglais sinon. Le journal de qBittorrent et les messages des trackers restent dans la langue réglée dans l'interface classique.
+
 ## Thèmes
 
 ![Les huit thèmes : Classique, Ardoise, Papier, Signal, Minimal, Futur, Terminal et Aurore](docs/captures/themes.png)
