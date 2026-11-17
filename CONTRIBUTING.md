@@ -39,13 +39,26 @@ printf '[LegalNotice]\nAccepted=true\n[WebUI]\nPort=8085\nAlternativeUIEnabled=t
 
 puis ouvrez <http://localhost:8085> (le mot de passe temporaire s'affiche dans le terminal). Ajoutez `?root=/un/dossier` à l'adresse pour naviguer ailleurs que dans `/share`.
 
+## Textes et traduction
+
+L'interface est écrite en français ; l'anglais est une traduction appliquée à l'affichage.
+
+- Écrivez tout nouveau texte **en français dans le code**, comme le reste.
+- Ajoutez sa traduction dans `src/shared/webui/public/explorer/i18n-en.js` : une ligne `"texte français": "English text"` dans `exact`. Une phrase coupée par une balise (`<b>`, `<a>`, `<code>`…) s'affiche en plusieurs morceaux : chaque morceau a sa ligne.
+- Un texte qui contient un nombre ou un nom (« 3 torrents supprimés », « Catégorie « Films » créée ») demande une règle `R(/…/, …)` dans le même fichier ; les exemples y sont nombreux.
+- Pour trouver ce qui manque : ouvrez l'interface en anglais avec `?i18n=debug` dans l'adresse, parcourez les écrans concernés, puis tapez `I18N.missing()` dans la console du navigateur. La liste contient aussi vos noms de torrents et de dossiers, qui n'ont pas à être traduits.
+- `python3 tests/i18n-check.py` vérifie le dictionnaire (doublons, ponctuation, nombres) et les textes fixes des deux pages. Il ne voit pas les textes construits par le JavaScript : d'où l'étape précédente.
+- Les noms de torrents, de fichiers et de dossiers ne sont jamais traduits (`skip` dans le dictionnaire).
+
+Une correction de traduction est une très bonne première contribution : il suffit de modifier la ligne concernée dans `i18n-en.js`.
+
 ## Mettre à jour les captures d'écran
 
 Les captures du README sont dans `docs/captures/` (1280 × 720 à l'échelle 2, soit 2560 × 1440). Elles montrent le thème Classique, sauf `themes.png` qui juxtapose les huit thèmes.
 
 - N'y faites figurer que des **données de démonstration** : distributions Linux, films libres (Big Buck Bunny, Sintel…), dossiers génériques. Aucun nom réel, adresse de NAS ou contenu protégé.
 - Pour obtenir des téléchargements actifs sans connexion Internet, lancez une seconde instance de `qbittorrent-nox` sur un autre port avec les mêmes `.torrent` et les données correspondantes, puis ajoutez-la comme pair (panneau de détails › onglet Pairs › « Ajouter des pairs… », `127.0.0.1:<port>`).
-- Pour afficher un thème précis dès l'ouverture, réglez `localStorage['qbfs.theme']` (par exemple `"aurore"`).
+- Pour afficher un thème ou une langue précis dès l'ouverture, réglez `localStorage['qbfs.theme']` (par exemple `"aurore"`) et `localStorage['qbfs.lang']` (`"fr"` ou `"en"`). Les captures du README anglais sont dans `docs/captures/en/`.
 - `explorateur.png` est aussi l'image affichée par l'App Center (`<snapshot>` de `repository.xml`) : gardez ce nom de fichier.
 - `.github/assets/social-preview.png` (1280 × 640) est l'image d'aperçu du dépôt ; elle se charge à la main dans Settings › General › Social preview.
 

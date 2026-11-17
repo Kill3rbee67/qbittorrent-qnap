@@ -30,6 +30,9 @@ try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', func
 // Thème changé dans un autre onglet
 window.addEventListener('storage', function (e) { if (e.key === 'qbfs.theme') applyTheme(); });
 </script>
+<!-- Langue (FR / EN) : explorer/i18n.js -->
+<script src="explorer/i18n-en.js?v=__QPKG_VER__"></script>
+<script src="explorer/i18n.js?v=__QPKG_VER__"></script>
 <style>
   /* Couleurs, polices, arrondis et ombres : explorer/themes.css (variables) */
   * { box-sizing:border-box; }
@@ -47,6 +50,12 @@ window.addEventListener('storage', function (e) { if (e.key === 'qbfs.theme') ap
   .tbtn { background:var(--header-btn-bg); border:1px solid var(--header-btn-border); color:var(--header-text); border-radius:var(--radius-btn); padding:5px 10px; cursor:pointer; white-space:nowrap; }
   .tbtn:hover { background:var(--header-btn-hover); }
   .burger { display:none; background:none; border:0; color:var(--header-text); padding:6px; cursor:pointer; }
+  /* Sélecteur de langue (rempli par explorer/i18n.js) */
+  .langsw { display:flex; flex:none; border:1px solid var(--header-btn-border); border-radius:var(--radius-btn); overflow:hidden; }
+  .langsw button { background:var(--header-btn-bg); border:0; color:var(--header-text); padding:5px 8px; cursor:pointer; font-size:12px; font-weight:600; letter-spacing:.03em; }
+  .langsw button + button { border-left:1px solid var(--header-btn-border); }
+  .langsw button:hover { background:var(--header-btn-hover); }
+  .langsw button.on { background:var(--header-menu-hover); box-shadow:inset 0 -2px 0 var(--header-text); cursor:default; }
 
   /* --- Disposition --- */
   .layout { display:flex; height:calc(100% - 48px); }
@@ -310,6 +319,7 @@ window.addEventListener('storage', function (e) { if (e.key === 'qbfs.theme') ap
   <nav class="menubar" id="menubar" aria-label="Menus"></nav>
   <div class="grow"></div>
   <div class="speeds" id="speeds" title="Limites de vitesse globales" style="cursor:pointer"><span class="gauge" id="g-dl" aria-hidden="true"></span><span id="spd-dl">↓ —</span><span class="gauge" id="g-up" aria-hidden="true"></span><span id="spd-up">↑ —</span></div>
+  <span class="langsw" id="langsw"></span>
   <button class="tbtn hide-sm" id="classic" title="Ouvrir l'interface d'origine de qBittorrent">⇄ Interface classique</button>
   <button class="tbtn" id="logout">Déconnexion</button>
 </header>

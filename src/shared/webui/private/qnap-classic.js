@@ -5,11 +5,15 @@
 // - ouverture directe de la fenêtre Options quand on arrive par classic.html#reglages.
 (function () {
     "use strict";
+    // Même langue que l'interface explorateur (choix qbfs.lang, sinon langue du navigateur)
+    var en;
+    try { en = JSON.parse(localStorage.getItem("qbfs.lang")); } catch (e) {}
+    en = en === "en" || (en !== "fr" && !/^fr\b/i.test(navigator.language || "fr"));
     var a = document.createElement("a");
     a.id = "qnapExplorerLink";
     a.href = "./";
-    a.title = "Revenir à l'interface explorateur";
-    a.textContent = "⇄ Interface explorateur";
+    a.title = en ? "Back to the explorer interface" : "Revenir à l'interface explorateur";
+    a.textContent = en ? "⇄ Explorer interface" : "⇄ Interface explorateur";
     a.style.cssText = "position:fixed;top:3px;right:12px;z-index:100000;padding:3px 12px;border-radius:4px;"
         + "background:#1866c2;color:#fff;font:600 13px/1.6 sans-serif;text-decoration:none;box-shadow:0 1px 3px rgba(0,0,0,.3)";
     document.body.appendChild(a);
@@ -26,7 +30,9 @@
         c.disabled = true;
         var note = document.createElement("div");
         note.style.cssText = "margin:2px 0 6px 24px;color:#b45309;font-size:11px";
-        note.textContent = "Bloqué par le paquet QNAP : avec l'accès par QTS / myQNAPcloud Link, cette option ouvrirait qBittorrent à tout Internet.";
+        note.textContent = en
+            ? "Locked by the QNAP package: with access through QTS / myQNAPcloud Link, this option would open qBittorrent to the whole Internet."
+            : "Bloqué par le paquet QNAP : avec l'accès par QTS / myQNAPcloud Link, cette option ouvrirait qBittorrent à tout Internet.";
         c.parentNode.appendChild(note);
         var t = setInterval(function () {
             if (!document.body.contains(c))

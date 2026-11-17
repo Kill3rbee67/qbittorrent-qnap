@@ -2,6 +2,18 @@
 
 Le numéro de version reprend celui de qBittorrent, suivi d'un numéro de révision du paquet (5.3.0.**4** = révision 4 du paquet pour qBittorrent 5.3.0).
 
+## 5.3.9.0
+Ajouté
+- **Interface en anglais.** Un sélecteur **FR / EN** dans la barre du haut (et sur la page de connexion) fait passer toute l'interface explorateur d'une langue à l'autre : menus, listes, panneau de détails, fenêtres, réglages, abonnements RSS, messages. Le choix est mémorisé par le navigateur (`qbfs.lang`), comme le thème. Sans choix, l'interface s'affiche en français si le navigateur est en français, en anglais sinon.
+- En anglais, les nombres et les dates suivent l'usage anglais (1,234.5) et les unités sont celles de qBittorrent (KiB, MiB, GiB).
+- Le bouton « ⇄ Interface explorateur » ajouté à l'interface classique suit la même langue.
+- `tests/i18n-check.py` (lancé par la CI) : cohérence du dictionnaire anglais, et traduction présente pour chaque texte fixe des deux pages.
+
+À savoir
+- En français, rien ne change : les textes restent ceux du code, la traduction ne s'active qu'en anglais (`explorer/i18n.js`, dictionnaire `explorer/i18n-en.js`).
+- Restent en français : le journal de qBittorrent et les messages renvoyés par les trackers (ils viennent de qBittorrent, dans la langue réglée dans l'interface classique), ainsi que les e-mails et messages de notification du paquet.
+- Un texte oublié s'affiche en français, sans autre effet. Pour le signaler ou le corriger : voir CONTRIBUTING.md.
+
 ## 5.3.8.1
 Modifié
 - Ouverture de la page plus rapide, dans tous les thèmes : la liste des torrents est demandée sans attendre la lecture des dossiers du NAS (qui se fait en même temps), et les abonnements RSS (réponse volumineuse) ne sont chargés qu'ensuite. Avant, la liste n'apparaissait qu'après ces lectures.
